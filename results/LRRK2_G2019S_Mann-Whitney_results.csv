@@ -1,0 +1,6 @@
+Descriptor,Statistics,p,Interpretation
+pchembl_value,194875.0,1.9413665266561374e-77,Significant
+MW,148827.5,8.877156020474015e-23,Significant
+LogP,106648.5,0.07828189691551275,Non-significant
+NumHDonors,99243.5,0.7075878551713839,Non-significant
+NumHAcceptors,141364.0,8.297372610201316e-18,Significant
