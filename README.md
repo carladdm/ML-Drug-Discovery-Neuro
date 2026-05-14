@@ -29,30 +29,39 @@ This project applies a full ML pipeline to predict molecular bioactivity against
 | **LRRK2** (Leucine-Rich Repeat Kinase 2) | Familial & sporadic Parkinson's | Modeled in three variants: unified, wild-type (WT), and G2019S mutation |
 
 ---
-<!--
 
 ## Results summary
 
 ### Regression — Potency prediction (pChEMBL value, derived from IC₅₀)
 
+*All models reported are the **Optuna-optimized** final winners after two-stage selection (LazyPredict screening → Bayesian hyperparameter tuning).*
+
 | Target | Best model | R² | RMSE |
 |---|---|---|---|
-| AChE | XGBoost | **0.711** | — |
-| GSK-3β | HistGradientBoosting | **0.670** | — |
-| MAO-B | XGBoost | **0.649** | — |
-| LRRK2 | XGBoost / LightGBM | — | — |
+| AChE | XGBoost | **0.711** | **0.719** |
+| GSK-3β | XGBoost | **0.676** | **0.719** |
+| MAO-B | XGBoost | **0.649** | **0.737** |
+| LRRK2 unified | XGBoost | **0.673** | **0.608** |
+| LRRK2 WT | XGBoost | **0.571** | **0.601** |
+| LRRK2 G2019S | RF / XGBoost | **0.638** | **0.649** |
 
-> R² values above 0.65 on held-out test sets (80/20 split) in medicinal chemistry are considered **highly competitive** given the inherent noise of bioassay data.
+> R² values above 0.60 on held-out test sets (80/20 split) in medicinal chemistry are considered **competitive** given the inherent noise of bioassay data.
 
 ### Classification — Active / Inactive screening filter
 
 | Target | Best model | MCC | AUC-ROC |
 |---|---|---|---|
-| GSK-3β | XGBoost / LGBM | **0.69** | **0.91** |
 | AChE | XGBoost | **0.65** | **0.90** |
+| GSK-3β | LGBM | **0.69** | **0.91** |
+| MAO-B | RF | **0.62** | **0.89** |
+| LRRK2 unified | LGBM | **0.46** | **0.89** |
+| LRRK2 WT | LGBM | **0.47** | **0.85** |
+| LRRK2 G2019S | LDA / Passive Agressive | **0.52** | **0.85** |
+
 
 > MCC (Matthews Correlation Coefficient) was selected as the primary metric due to severe class imbalance in medicinal chemistry datasets (particularly LRRK2). MCC is the only metric robust to imbalanced binary classification — accuracy and F1 are misleading in this context.
 
+<!--
 **Key empirical finding:** Extensive benchmarking with LazyPredict across dozens of models demonstrated that **tree-based ensemble methods (XGBoost, LightGBM, HistGradientBoosting) consistently outperformed deep learning architectures** on these high-dimensional tabular fingerprint datasets. This is consistent with the literature on structured molecular descriptor data.
 
 ---
