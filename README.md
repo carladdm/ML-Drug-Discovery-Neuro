@@ -13,7 +13,7 @@ Predicting molecular bioactivity against four key neurodegenerative proteins usi
 
 ---
 
-## Scientific context
+## Context
 
 Neurodegenerative diseases — Alzheimer's, Parkinson's, and related dementias — currently affect over 55 million people worldwide with no disease-modifying treatments available. A key bottleneck in drug discovery is the early identification of potent and selective bioactive compounds from vast chemical spaces, a task that has historically required expensive and time-consuming wet-lab assays.
 
@@ -29,6 +29,34 @@ This project applies a full ML pipeline to predict molecular bioactivity against
 | **LRRK2** (Leucine-Rich Repeat Kinase 2) | Familial & sporadic Parkinson's | Modeled in three variants: unified, wild-type (WT), and G2019S mutation |
 
 ---
+<!--
+
+## Results summary
+
+### Regression — Potency prediction (pChEMBL value, derived from IC₅₀)
+
+| Target | Best model | R² | RMSE |
+|---|---|---|---|
+| AChE | XGBoost | **0.711** | — |
+| GSK-3β | HistGradientBoosting | **0.670** | — |
+| MAO-B | XGBoost | **0.649** | — |
+| LRRK2 | XGBoost / LightGBM | — | — |
+
+> R² values above 0.65 on held-out test sets (80/20 split) in medicinal chemistry are considered **highly competitive** given the inherent noise of bioassay data.
+
+### Classification — Active / Inactive screening filter
+
+| Target | Best model | MCC | AUC-ROC |
+|---|---|---|---|
+| GSK-3β | XGBoost / LGBM | **0.69** | **0.91** |
+| AChE | XGBoost | **0.65** | **0.90** |
+
+> MCC (Matthews Correlation Coefficient) was selected as the primary metric due to severe class imbalance in medicinal chemistry datasets (particularly LRRK2). MCC is the only metric robust to imbalanced binary classification — accuracy and F1 are misleading in this context.
+
+**Key empirical finding:** Extensive benchmarking with LazyPredict across dozens of models demonstrated that **tree-based ensemble methods (XGBoost, LightGBM, HistGradientBoosting) consistently outperformed deep learning architectures** on these high-dimensional tabular fingerprint datasets. This is consistent with the literature on structured molecular descriptor data.
+
+---
+-->
 
 ## Dataset
 
