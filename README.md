@@ -36,7 +36,7 @@ This project applies a full ML pipeline to predict molecular bioactivity against
 
 *All models reported are the **Optuna-optimized** final winners after two-stage selection (LazyPredict screening → Bayesian hyperparameter tuning).*
 
-| Target | Best model | R² | RMSE |
+| Target | Final model (post Optuna) | R² | RMSE |
 |---|---|---|---|
 | AChE | XGBoost | **0.711** | **0.719** |
 | GSK-3β | XGBoost | **0.676** | **0.719** |
