@@ -1,0 +1,35 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos Virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Checkpoints
+.ipynb_checkpoints/
+
+# Aislamiento de Datos y Modelos (Cookiecutter DS / Production Standard)
+data/raw/*
+data/processed/*
+data/external/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+models/*
+!models/.gitkeep
+
+# Logs y Bases de Datos locales
+*.log
+*.sqlite
+*.db
+
+# Configuración de IDEs y Sistema Operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
