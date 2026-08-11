@@ -10,7 +10,7 @@ Predicting molecular bioactivity against four key neurodegenerative proteins usi
 ![Scikit-learn](https://img.shields.io/badge/Scikit--learn-F7931E?style=flat&logo=scikit-learn&logoColor=white)
 ![Optuna](https://img.shields.io/badge/Optuna-Bayesian_Optimization-4089c1)
 ![SHAP](https://img.shields.io/badge/XAI-SHAP-8A2BE2?style=flat)
-![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat&logo=docker&logoColor=white)
 
 > ℹ️ **Academic Baseline & Codebase Notice**  
 > The original, unedited codebase evaluated during the Master's Thesis defense is preserved and archived at [Release v1.0.0 - Official Master's Thesis Academic Baseline](https://github.com/carladdm/ML-Drug-Discovery-Neuro/releases/tag/v1.0-master-thesis).  
@@ -46,7 +46,7 @@ Design, refactor, and deploy an end-to-end Machine Learning pipeline structured 
 | LRRK2 WT | XGBoost | **0.571** | **0.601** |
 | LRRK2 G2019S | RF / XGBoost | **0.638** | **0.649** |
 
-> *$R^2 > 0.60$ on independent test sets is considered highly competitive in computational medicinal chemistry due to inherent bioassay noise.*
+> *R²> 0.60 on independent test sets is considered highly competitive in computational medicinal chemistry due to inherent bioassay noise.*
 
 #### 📈 Optimization Impact: Default Baseline vs. Optuna Bayesian Search
 A critical phase of the ML engineering pipeline was the systematic tuning of top-performing baseline models using **Optuna (Tree-structured Parzen Estimator - TPE)** across 30 trials with stratified 5-fold cross-validation. 
@@ -64,7 +64,7 @@ Hyperparameter optimization unlocked substantial performance improvements across
 > 💡 **Key Engineering Takeaway:** Automated Bayesian hyperparameter search unlocked up to a **+12.81% increase in variance explained ($R^2$)** for challenging targets like MAO-B, proving the necessity of systematic tuning over naive default parameter selection.
 > 
 ### 2. Classification — Active / Inactive Screening Filter
-*Binary threshold: Active ($pIC_{50} \ge 6.0$, $IC_{50} \le 1\mu M$) vs. Inactive ($pIC_{50} \lt 6.0$). MCC is reported as the primary metric due to class imbalance.*
+*Binary threshold: Active (pIC₅₀ .ge. 6.0, IC₅₀ .le. 1uM) vs. Inactive (pIC₅₀ .lt. 6.0). MCC is reported as the primary metric due to class imbalance.*
 
 | Target | Best model | MCC | AUC-ROC |
 |---|---|---|---|
@@ -205,6 +205,5 @@ make docker-run
 ## 👤 Author & Maintainer
 
 Carla Di Monno (carladdm) — Data Scientist | Chemical Engineer
-MSc in Big Data & Data Science (Distinction in Machine Learning).
 
 [LinkedIn](https://www.linkedin.com/in/ing-carladimonno)
