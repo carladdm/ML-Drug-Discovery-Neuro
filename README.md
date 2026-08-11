@@ -144,8 +144,6 @@ ChEMBL v36 REST API ──> Data Ingestion & Curation ──> Molecular Featuriz
 ```
 ---
 
----
-
 ## 📊 Key Results & Empirical Benchmark
 
 ### 1. Chemical Space Analysis & Feature Engineering
@@ -155,24 +153,35 @@ Before model training, molecular distribution was evaluated against Lipinski's R
   <img src="reports/figures/chemical_space_lipinski.png" alt="Chemical Space MW vs LogP" width="85%">
 </p>
 
-### 2. Model Performance (Predicted vs. Experimental Potency)
+### 2. Benchmarking & Screening Comparison
+
+Prior to Bayesian hyperparameter tuning, a mass benchmark screening evaluated dozens of supervised classifiers and regressors across all four neurodegenerative targets. 
+
+<p align="center">
+  <img src="reports/figures/model_benchmarking_comparison.png" alt="Top Model Performance Comparison Across Targets" width="85%">
+</p>
+
+> 💡 **Empirical Insight:** Tree-based ensemble methods systematically outperformed linear classifiers and deep baselines on sparse, high-dimensional PubChem fingerprint matrices, achieving superior Matthews Correlation Coefficient (MCC) and $R^2$ scores[cite: 2, 3].
+> 
+### 3. Model Performance (Predicted vs. Experimental Potency)
 Post-Optuna Bayesian hyperparameter optimization, ensemble models (XGBoost, Random Forest, HGB) and SVR achieved strong predictive capacity across test sets.
 
 <p align="center">
-  <img src="reports/figures/regression_predicted_vs_experimental_MAO-B.png" alt="Regression Predicted vs Experimental MAO-B" width="90%">
+  <img src="reports/figures/MAO-B_regression_predicted_vs_experimental.png" alt="Regression Predicted vs Experimental MAO-B" width="90%">
 </p>
 
 ---
 
 ## 🧠 Explainable AI (XAI) & Pharmacophore Discovery
 
-To bridge machine learning predictions with medicinal chemistry insight, **SHAP TreeExplainer** was applied to extract feature contributions from high-performing ensemble models. This converts black-box predictions into interpretable pharmacophoric rules by identifying specific PubChem fingerprint bits that drive bioactivity.
+To bridge Machine Learning predictions with medicinal chemistry insight, **SHAP TreeExplainer** was applied alongside global Feature Importance metrics. This dual layer of interpretability converts ensemble predictions into actionable pharmacophoric hypotheses by identifying specific PubChem fingerprint bits that increase or decrease binding affinity.
 
-<!--<p align="center">
-<!--  <img src="reports/figures/shap_beeswarm_ache.png" alt="SHAP Feature Attribution" width="85%">
-<!--</p>
+<p align="center">
+  <img src="reports/figures/AChE_feature_importance_and_shap.png" alt="AChE: Importance Score and SHAP Feature Attribution" width="90%">
+</p>
 
-<!-- ![Model comparison](results/figures/model_benchmarking_comparison.png) -->
+* **Feature Importance (Left):** Isolates the top 10 structural descriptors (e.g., `PubchemFP606`, `PubchemFP601`) driving model decisions.
+* **SHAP Beeswarm Plot (Right):** Illustrates feature value impact directionality—high descriptor values (red) vs. low values (blue) mapped to $pIC_{50}$ binding affinity shifts.
 
 ---
 
@@ -191,7 +200,7 @@ make setup
 # 3. Execute modular pipeline
 make train
 ```
-### Option A: Local Virtual Environment via Makefile (Recommended)
+### Option B: Docker Container Execution
 
 ```bash
 # 1. Build production image (Python 3.12 + OpenJDK 17)
