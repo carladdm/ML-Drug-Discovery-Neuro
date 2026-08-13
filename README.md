@@ -56,10 +56,10 @@ Hyperparameter optimization unlocked substantial performance improvements across
 | Target | Target ChEMBL ID | Baseline Model (LazyPredict) | Baseline $R^2$ | Final Model (Post-Optuna) | Final $R^2$ | **Optimization Gain ($\Delta R^2$)** | Final Test RMSE |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **AChE** | `CHEMBL220` | XGBoost | 0.670 | **XGBoost** | **0.711** | **+6.12%** | **0.719** |
-| **MAO-B** | `CHEMBL203` | Random Forest | 0.570 | **XGBoost / RF** | **0.643** | **+12.81%** | **0.744** |
+| **MAO-B** | `CHEMBL2039` | Random Forest | 0.570 | **XGBoost / RF** | **0.643** | **+12.81%** | **0.744** |
 | **GSK-3β** | `CHEMBL262` | HistGradientBoosting | 0.630 | **HistGradientBoosting** | **0.670** | **+6.35%** | **0.726** |
-| **LRRK2 Unified** | `CHEMBL1908209` | SVR | 0.620 | **XGBoost / SVR** | **0.653** | **+4.60%** | **0.626** |
-| **LRRK2 G2019S** | `CHEMBL1908209` | Random Forest | 0.600 | **Random Forest** | **0.638** | **+6.33%** | **0.649** |
+| **LRRK2 Unified** | `CHEMBL1075104` | SVR | 0.650 | **XGBoost / SVR** | **0.653** | **+4.60%** | **0.626** |
+| **LRRK2 G2019S** | `CHEMBL1075104` | Random Forest | 0.600 | **Random Forest** | **0.638** | **+6.33%** | **0.649** |
 
 > 💡 **Key Engineering Takeaway:** Automated Bayesian hyperparameter search unlocked up to a **+12.81% increase in variance explained ($R^2$)** for challenging targets like MAO-B, proving the necessity of systematic tuning over naive default parameter selection.
 > 
