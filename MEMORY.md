@@ -5,8 +5,9 @@ Verdad científica y contexto inmutable del proyecto. **Consulta este archivo y 
 ## 1. Estado
 *   **Rama:** `refactor/production-architecture`.
 *   **Fase 0 completada + saneamiento posterior:** paquete `mldd` instalable (src-layout, hatchling), CLI Typer (`mldd version`; `train/tune/predict` llegan en Fases 4-7), Makefile cross-platform, CI (ruff → mypy strict → pytest, Py3.12), pre-commit. Gates locales en verde.
-*   **Deuda con ticket:** `src/mldd/dataset.py` aún replica la lógica académica incorrecta (zona gris 5-6, asunción nM, sin filtro `standard_relation`, sin split LRRK2). Congelada por `tests/test_scientific_contract.py` (xfail strict); reescribir en Fase 2 (T2.2-T2.3) ANTES de cualquier entrenamiento. `train.py` es un baseline RF estático, a reemplazar en Fases 4-5.
 *   **Fase 1 completada (config centralizada):** `configs/` (YAML de Hydra) es la única fuente de verdad; `mldd.config.load_config(overrides)` compone con Hydra y valida con Pydantic v2 (`extra="forbid"`), lanzando `ConfigError`. Targets/seed/umbrales/params ya NO viven en `constants.py` (ahora solo `Task` + contratos de columnas). Perfiles: 6 targets × 2 tasks, política de `stratify` fijada (clasificación sí, regresión no; ver `TrainingConfig`).
+*   **Fase 2 completada (ingesta + curación):** I/O de red/ficheros en `io.py` (fetch ChEMBL con retry tenacity, validación de vacío/volumen, CSV), ciencia pura en `dataset.py` (rescate pChEMBL unit-aware, dedup InChIKey con `Δ ≤ 1.0`, etiquetado sin zona gris, split LRRK2 WT/G2019S). Los 4 xfail de `tests/test_scientific_contract.py` se activaron (markers retirados, tests intactos); el escáner de literales ya NO exime `dataset.py`. `preprocess_and_calculate_pic50` y `MultiTargetBioactivityIngestor` eliminados. **Pendiente:** la ingesta masiva real (6 targets → CSV en `data/`) llega con el CLI en Fase 5.
+*   **Deuda con ticket:** `train.py` es un baseline RF estático con I/O acoplado (audit B15), a reemplazar en Fases 4-5.
 *   **Datos:** `data/` y `models/` gitignored; los CSV crudos de ChEMBL están sin trackear (regenerables vía ingesta, gestión por manifests).
 
 ## 2. Verdad Científica (NO ALTERAR)
