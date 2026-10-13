@@ -132,10 +132,10 @@ ML-Drug-Discovery-Neuro/
     ├── config.py             # Hydra composition + Pydantic v2 schemas (`load_config`)
     ├── constants.py          # Task enum & dataframe column contracts
     ├── exceptions.py         # Domain-specific exception hierarchy
-    ├── io.py                 # ChEMBL I/O: fetch (tenacity retry) + CSV persistence
+    ├── io.py                 # ChEMBL fetch (tenacity retry), CSV persistence & PaDEL PubChem FP
     ├── logging_utils.py      # Centralised logging setup
     ├── dataset.py            # Pure curation: pChEMBL rescue, InChIKey dedup, labels, LRRK2 split
-    ├── features.py           # Lipinski descriptors & PubChem featurization via RDKit
+    ├── features.py           # Pure features: RDKit standardization, Lipinski, Z-score & variance filters
     └── modeling/
         ├── __init__.py
         ├── train.py          # Dual training workflows (Classification & Regression)
