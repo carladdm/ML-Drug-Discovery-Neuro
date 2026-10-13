@@ -118,6 +118,15 @@ def _fake_pubchem_csv(path: Path, n_rows: int, *, drop_columns: tuple[str, ...] 
     frame.to_csv(path, index=False)
 
 
+def _fake_named_csv(path: Path, names: list[str]) -> None:
+    """Write a contract-valid PaDEL CSV whose rows carry the given accessions."""
+    frame = pd.DataFrame(
+        [[name, *([0] * PUBCHEM_FP_BITS)] for name in names],
+        columns=[PUBCHEM_FP_NAME_COLUMN, *PUBCHEM_FP_COLUMNS],
+    )
+    frame.to_csv(path, index=False)
+
+
 def _smiles_frame(n: int) -> tuple[pd.Series, pd.Series]:
     return pd.Series(["CCO"] * n), pd.Series([f"M{index}" for index in range(n)])
 
@@ -201,6 +210,49 @@ def test_pubchem_fingerprints_rejects_contract_violations(
         monkeypatch.setattr(padelpy, "padeldescriptor", fake)
         with pytest.raises(FeaturizationError, match=match):
             io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+
+def test_pubchem_fingerprints_realigns_reordered_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PaDEL runs multi-threaded and may emit rows out of order: the matrix is
+    realigned by the Name column, never trusted to positional order."""
+    rows = [("M2", 1), ("M0", 0), ("M1", 1)]  # deliberately shuffled
+
+    def _reordered(**kwargs: Any) -> None:
+        frame = pd.DataFrame(
+            [[name, pattern, *([0] * (PUBCHEM_FP_BITS - 1))] for name, pattern in rows],
+            columns=[PUBCHEM_FP_NAME_COLUMN, *PUBCHEM_FP_COLUMNS],
+        )
+        frame.to_csv(kwargs["d_file"], index=False)
+
+    monkeypatch.setattr(padelpy, "padeldescriptor", _reordered)
+    smiles, ids = _smiles_frame(3)  # M0, M1, M2
+    out = io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+    assert list(out[PUBCHEM_FP_COLUMNS[0]]) == [0, 1, 1]  # input order: M0, M1, M2
+
+
+def test_pubchem_fingerprints_rejects_name_contract_violations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Duplicated, dropped or duplicated-input accessions can never align X/y."""
+    smiles, ids = _smiles_frame(2)
+
+    def _duplicated_names(**kwargs: Any) -> None:
+        _fake_named_csv(Path(kwargs["d_file"]), ["M0", "M0"])
+
+    def _unknown_name(**kwargs: Any) -> None:
+        _fake_named_csv(Path(kwargs["d_file"]), ["M0", "M9"])  # M1 never emitted
+
+    for fake, match in (
+        (_duplicated_names, "duplicated"),
+        (_unknown_name, "dropped 1 molecule"),
+    ):
+        monkeypatch.setattr(padelpy, "padeldescriptor", fake)
+        with pytest.raises(FeaturizationError, match=match):
+            io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+    with pytest.raises(FeaturizationError, match="unique"):
+        io.compute_pubchem_fingerprints(smiles, pd.Series(["M0", "M0"]), _FEATURES)
 
 
 @pytest.mark.padel

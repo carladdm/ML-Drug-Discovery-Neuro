@@ -189,19 +189,21 @@ def compute_pubchem_fingerprints(
 ) -> pd.DataFrame:
     """Compute the PubChem 881-bit fingerprint matrix via PaDEL (NB04).
 
-    Writes the molecules to a temporary ``.smi`` file, shells out to the
-    PaDEL-Descriptor bundled with ``padelpy`` and returns the bit matrix. The
-    run reproduces the notebook's science: ``removesalt`` and
-    ``standardizenitro`` are enabled and ``retainorder`` guarantees the output
-    rows keep the input order, so the matrix aligns positionally with the
-    caller's dataframe. NB04 feeds the raw ``canonical_smiles`` here — PaDEL
-    re-standardizes internally, and the notebook's ``PubchemFingerprinter.xml``
-    produces the exact same bits as the bundled ``-fingerprints`` flag
-    (verified bit-for-bit on 50 real MAO-B molecules).
+    Writes the molecules to a temporary ``.smi`` file (SMILES + accession),
+    shells out to the PaDEL-Descriptor bundled with ``padelpy`` and returns the
+    bit matrix. The run reproduces the notebook's science: ``removesalt`` and
+    ``standardizenitro`` are enabled. NB04 feeds the raw ``canonical_smiles``
+    here — PaDEL re-standardizes internally, and the notebook's
+    ``PubchemFingerprinter.xml`` produces the exact same bits as the bundled
+    ``-fingerprints`` flag (verified bit-for-bit on 50 real MAO-B molecules).
+
+    Row alignment is enforced by the ``Name`` column (the accessions written
+    into the ``.smi``), not by trusting PaDEL's multi-threaded output order:
+    X can therefore never pair with the wrong row of y.
 
     Args:
         smiles: SMILES to featurize, one per row.
-        molecule_ids: Molecule accessions written as the ``.smi`` names.
+        molecule_ids: Unique molecule accessions written as the ``.smi`` names.
         feature_config: Featurization settings (only the subprocess cap is
             consumed here; the bit layout is a fixed PubChem contract).
 
@@ -211,8 +213,9 @@ def compute_pubchem_fingerprints(
 
     Raises:
         FeaturizationError: Empty or ragged input, a null SMILES (which PaDEL
-            would silently drop, misaligning the matrix), a failed/absent PaDEL
-            run, or an output that violates the fingerprint column contract.
+            would silently drop, misaligning the matrix), duplicate accessions,
+            a failed/absent/dropping PaDEL run, or an output that violates the
+            fingerprint column contract.
     """
     if len(smiles) != len(molecule_ids):
         raise FeaturizationError(
@@ -263,10 +266,35 @@ def compute_pubchem_fingerprints(
             "the fingerprint matrix would misalign with the dataset."
         )
 
+    # ``retainorder`` is requested as a hint, but PaDEL runs multi-threaded and
+    # has been observed emitting near-identical adjacent molecules out of order
+    # across runs. The matrix is therefore realigned by the ``Name`` column —
+    # the molecule accessions we wrote into the ``.smi`` — so X can never pair
+    # with the wrong row of y.
+    expected_names = molecule_ids.tolist()
+    if len(set(expected_names)) != len(expected_names):
+        raise FeaturizationError(
+            "molecule_ids must be unique: the PaDEL output is aligned by name."
+        )
+    names = raw[PUBCHEM_FP_NAME_COLUMN]
+    if names.duplicated().any():
+        raise FeaturizationError(
+            "PaDEL output contains duplicated molecule names; cannot align the matrix."
+        )
+    dropped = sorted(set(expected_names) - set(names))
+    if dropped:
+        raise FeaturizationError(
+            f"PaDEL dropped {len(dropped)} molecule(s) (e.g. {dropped[:3]}); "
+            "the fingerprint matrix would misalign with the dataset."
+        )
+    if names.tolist() != expected_names:
+        logger.info("PaDEL emitted rows out of input order; realigning by molecule name.")
+
+    ordered = raw.set_index(PUBCHEM_FP_NAME_COLUMN).reindex(expected_names)
     logger.info(
         "Computed %d PubChem fingerprint bits for %d molecules.", len(PUBCHEM_FP_COLUMNS), len(raw)
     )
     return pd.DataFrame(
-        raw[list(PUBCHEM_FP_COLUMNS)].to_numpy(),
+        ordered[list(PUBCHEM_FP_COLUMNS)].to_numpy(),
         columns=list(PUBCHEM_FP_COLUMNS),
     )
