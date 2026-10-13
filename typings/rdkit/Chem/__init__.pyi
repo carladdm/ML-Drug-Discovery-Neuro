@@ -11,6 +11,3 @@ MolToInchiKey: Any
 # Descriptor calculators (MolWt, MolLogP, ...)
 Descriptors: Any
 Lipinski: Any
-
-# Salt/charge standardization (LargestFragmentChooser, Uncharger, ...)
-rdMolStandardize: Any
