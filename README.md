@@ -95,7 +95,7 @@ ML-Drug-Discovery-Neuro/
 ├── Dockerfile               
 ├── Makefile                 
 ├── README.md                
-├── requirements.txt         
+├── pyproject.toml           # Paquete instalable (src/mldd) + config de ruff/mypy/pytest
 │
 ├── data/                    
 │   ├── raw/                 # Raw REST API extractions from ChEMBL v36
@@ -118,9 +118,13 @@ ML-Drug-Discovery-Neuro/
 ├── reports/
 │   └── figures/              # Metric plots, ROC curves, and SHAP summaries
 │
-└── src/                      # Production-ready Python Package
+└── src/mldd/                 # Production-ready Python Package (src-layout)
     ├── __init__.py
+    ├── cli.py                # Typer CLI entry point (`mldd`)
     ├── config.py             # Pathlib dynamic routing & multi-target configurations
+    ├── constants.py          # Target registry (ChEMBL IDs), tasks & column contracts
+    ├── exceptions.py         # Domain-specific exception hierarchy
+    ├── logging_utils.py      # Centralised logging setup
     ├── dataset.py            # Automated ChEMBL API ingestion & pIC50 transformations
     ├── features.py           # Lipinski descriptors & PubChem featurization via RDKit
     └── modeling/

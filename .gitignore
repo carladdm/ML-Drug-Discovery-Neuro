@@ -23,6 +23,22 @@ data/external/*
 models/*
 !models/.gitkeep
 
+# Artefactos de build y empaquetado
+*.egg-info/
+dist/
+build/
+
+# Cachés de herramientas de calidad
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# MLflow tracking local (Fase 5 / T5.1)
+mlruns/
+mlartifacts/
+
 # Logs y Bases de Datos locales
 *.log
 *.sqlite
