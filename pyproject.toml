@@ -16,7 +16,7 @@ requires-python = ">=3.12"
 keywords = [
     "drug-discovery",
     "chemoinformatics",
-    "ch embl",
+    "chembl",
     "rdkit",
     "machine-learning",
     "bioactivity",
@@ -127,8 +127,6 @@ pretty = true
 # Third-party libraries without PEP 561 type information.
 [[tool.mypy.overrides]]
 module = [
-    "rdkit",
-    "rdkit.*",
     "chembl_webresource_client",
     "chembl_webresource_client.*",
     "padelpy",

@@ -32,7 +32,6 @@ def test_seed_is_42() -> None:
 
 
 def test_exception_hierarchy() -> None:
-    assert issubclass(ValueError, Exception)
     try:
         raise MLDDException("boom")
     except MLDDException as exc:
