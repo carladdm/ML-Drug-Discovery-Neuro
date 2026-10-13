@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 import mldd
 from mldd.cli import app
-from mldd.config import BASE_DIR, DATA_DIR, MODELS_DIR, SEED
+from mldd.config import BASE_DIR, DATA_DIR, MODELS_DIR, load_config
 from mldd.exceptions import MLDDException
 from mldd.logging_utils import get_logger
 
@@ -28,7 +28,8 @@ def test_data_dirs_are_paths_under_base() -> None:
 
 
 def test_seed_is_42() -> None:
-    assert SEED == 42
+    """Seed is owned by configs/config.yaml since Fase 1."""
+    assert load_config().seed == 42
 
 
 def test_exception_hierarchy() -> None:
