@@ -38,6 +38,23 @@ NUM_H_DONORS: Final = "NumHDonors"
 NUM_H_ACCEPTORS: Final = "NumHAcceptors"
 LIPINSKI_DESCRIPTORS: Final[tuple[str, ...]] = (MW, LOGP, NUM_H_DONORS, NUM_H_ACCEPTORS)
 
+#: Descriptors scanned for extreme outliers (NB03 remove_outliers_and_visualize)
+ZSCORE_DESCRIPTORS: Final[tuple[str, ...]] = (
+    PCHEMBL_VALUE,
+    MW,
+    LOGP,
+    NUM_H_DONORS,
+    NUM_H_ACCEPTORS,
+)
+
+# PubChem fingerprint contract (PaDEL-Descriptor, PubChemFP0..PubChemFP880)
+PUBCHEM_FP_BITS: Final = 881
+PUBCHEM_FP_NAME_COLUMN: Final = "Name"
+PUBCHEM_FP_PREFIX: Final = "PubchemFP"
+PUBCHEM_FP_COLUMNS: Final[tuple[str, ...]] = tuple(
+    f"{PUBCHEM_FP_PREFIX}{index}" for index in range(PUBCHEM_FP_BITS)
+)
+
 # ChEMBL raw-record columns consumed by the curation stage (NB01/NB02)
 ASSAY_DESCRIPTION: Final = "assay_description"
 VARIANT_SEQUENCE: Final = "variant_sequence"

@@ -1,10 +1,11 @@
-"""ChEMBL I/O boundary: raw activity ingestion and CSV persistence.
+"""ChEMBL & PaDEL I/O boundary: raw activity ingestion and fingerprint runs.
 
-Network calls and file writes live here (DoD #3: I/O only in ``cli``/``io``/
-``trainer``/``predictor``). All curation science is pure and lives in
-``mldd.dataset``; this module only fetches raw records and persists them.
+Network calls, file writes and the PaDEL Java subprocess live here (DoD #3:
+I/O only in ``cli``/``io``/``trainer``/``predictor``). All curation and
+descriptor *science* is pure and lives in ``mldd.dataset``/``mldd.features``;
+this module only fetches raw records, persists them and shells out to PaDEL.
 
-The fetch is wrapped in a tenacity retry policy to survive ChEMBL's occasional
+The ChEMBL fetch is wrapped in a tenacity retry policy to survive occasional
 rate-limiting and transient network drops (NB01 re-ran cells manually when the
 API hiccuped; here that resilience is automatic).
 """
@@ -12,10 +13,12 @@ API hiccuped; here that resilience is automatic).
 from __future__ import annotations
 
 import logging
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Protocol
 
+import padelpy
 import pandas as pd
 from chembl_webresource_client.new_client import new_client
 from tenacity import (
@@ -26,9 +29,15 @@ from tenacity import (
     wait_exponential,
 )
 
-from mldd.config import DataConfig, TargetConfig
-from mldd.constants import TARGET_ID
-from mldd.exceptions import IngestionError
+from mldd.config import DataConfig, FeatureConfig, TargetConfig
+from mldd.constants import (
+    MOLECULE_ID,
+    PUBCHEM_FP_COLUMNS,
+    PUBCHEM_FP_NAME_COLUMN,
+    SMILES,
+    TARGET_ID,
+)
+from mldd.exceptions import FeaturizationError, IngestionError
 from mldd.logging_utils import get_logger
 
 logger: logging.Logger = get_logger(__name__)
@@ -173,3 +182,91 @@ def load_raw_csv(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
     logger.info("Loaded %d rows from %s.", len(df), path)
     return df
+
+
+def compute_pubchem_fingerprints(
+    smiles: pd.Series, molecule_ids: pd.Series, feature_config: FeatureConfig
+) -> pd.DataFrame:
+    """Compute the PubChem 881-bit fingerprint matrix via PaDEL (NB04).
+
+    Writes the molecules to a temporary ``.smi`` file, shells out to the
+    PaDEL-Descriptor bundled with ``padelpy`` and returns the bit matrix. The
+    run reproduces the notebook's science: ``removesalt`` and
+    ``standardizenitro`` are enabled and ``retainorder`` guarantees the output
+    rows keep the input order, so the matrix aligns positionally with the
+    caller's dataframe. NB04 feeds the raw ``canonical_smiles`` here — PaDEL
+    re-standardizes internally, and the notebook's ``PubchemFingerprinter.xml``
+    produces the exact same bits as the bundled ``-fingerprints`` flag
+    (verified bit-for-bit on 50 real MAO-B molecules).
+
+    Args:
+        smiles: SMILES to featurize, one per row.
+        molecule_ids: Molecule accessions written as the ``.smi`` names.
+        feature_config: Featurization settings (only the subprocess cap is
+            consumed here; the bit layout is a fixed PubChem contract).
+
+    Returns:
+        The 881-bit ``PubchemFP*`` matrix, one row per input molecule, in input
+        order, without the ``Name`` column.
+
+    Raises:
+        FeaturizationError: Empty or ragged input, a null SMILES (which PaDEL
+            would silently drop, misaligning the matrix), a failed/absent PaDEL
+            run, or an output that violates the fingerprint column contract.
+    """
+    if len(smiles) != len(molecule_ids):
+        raise FeaturizationError(
+            f"SMILES/ID length mismatch: {len(smiles)} vs {len(molecule_ids)}."
+        )
+    if smiles.empty:
+        raise FeaturizationError("No molecules to featurize.")
+    if smiles.isna().any():
+        raise FeaturizationError(
+            "Null SMILES would be dropped by PaDEL and silently misalign the "
+            "fingerprint matrix; drop them before featurizing."
+        )
+
+    with tempfile.TemporaryDirectory(prefix="mldd_padel_") as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        smi_file = tmp_path / "molecules.smi"
+        pd.DataFrame({SMILES: smiles.to_numpy(), MOLECULE_ID: molecule_ids.to_numpy()}).to_csv(
+            smi_file, sep="\t", index=False, header=False
+        )
+
+        output_file = tmp_path / "pubchem_fp.csv"
+        logger.info("Running PaDEL PubChem fingerprinting for %d molecules...", len(smiles))
+        try:
+            padelpy.padeldescriptor(
+                mol_dir=str(smi_file),
+                d_file=str(output_file),
+                fingerprints=True,
+                removesalt=True,
+                standardizenitro=True,
+                retainorder=True,
+                sp_timeout=feature_config.padel_timeout,
+            )
+        except (ReferenceError, RuntimeError) as exc:
+            raise FeaturizationError(f"PaDEL fingerprint run failed: {exc}") from exc
+
+        if not output_file.is_file():
+            raise FeaturizationError("PaDEL completed without producing a descriptor file.")
+        raw = pd.read_csv(output_file)
+
+    missing = [column for column in PUBCHEM_FP_COLUMNS if column not in raw.columns]
+    if missing or PUBCHEM_FP_NAME_COLUMN not in raw.columns:
+        raise FeaturizationError(
+            f"PaDEL output violates the PubChem contract; missing columns: {missing[:5]}"
+        )
+    if len(raw) != len(smiles):
+        raise FeaturizationError(
+            f"PaDEL returned {len(raw)} rows for {len(smiles)} molecules; "
+            "the fingerprint matrix would misalign with the dataset."
+        )
+
+    logger.info(
+        "Computed %d PubChem fingerprint bits for %d molecules.", len(PUBCHEM_FP_COLUMNS), len(raw)
+    )
+    return pd.DataFrame(
+        raw[list(PUBCHEM_FP_COLUMNS)].to_numpy(),
+        columns=list(PUBCHEM_FP_COLUMNS),
+    )

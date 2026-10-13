@@ -100,6 +100,7 @@ class FeatureConfig(BaseModel):
     variance_threshold_pre: float = Field(ge=0.0, le=1.0)
     variance_threshold_post: float = Field(ge=0.0, le=1.0)
     zscore_threshold: float = Field(gt=0.0)
+    padel_timeout: int = Field(gt=0, description="Subprocess cap (s) for the PaDEL Java run.")
 
 
 class ModelConfig(BaseModel):

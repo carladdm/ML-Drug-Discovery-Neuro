@@ -1,27 +1,32 @@
-"""Unit tests for the ChEMBL I/O boundary (Fase 2 / T2.1) using a fake client.
+"""Unit tests for the ChEMBL and PaDEL I/O boundaries (Fase 2 / T2.1, Fase 3 / T3.2).
 
-No network access: the official client is replaced by an in-memory double that
-records the filter chain, so the acquisition filters (thesis NB01) are asserted
-exactly.
+No network and no Java in the unit tests: the ChEMBL client is replaced by an
+in-memory double that records the filter chain, and the PaDEL subprocess is
+replaced by a fake that writes PaDEL-shaped CSVs, so the acquisition filters
+(thesis NB01) and the PubChem fingerprint contract (NB04) are asserted exactly.
+The real PaDEL run lives behind the ``padel`` marker.
 """
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Any
 
+import padelpy
 import pandas as pd
 import pytest
 from tenacity import stop_after_attempt, wait_exponential
 
 import mldd.io as io
 from mldd.config import load_config
-from mldd.constants import TARGET_ID
-from mldd.exceptions import IngestionError
+from mldd.constants import PUBCHEM_FP_BITS, PUBCHEM_FP_COLUMNS, PUBCHEM_FP_NAME_COLUMN, TARGET_ID
+from mldd.exceptions import FeaturizationError, IngestionError
 
 _CONFIG = load_config(["target=maob"])
 _TARGET = _CONFIG.target
 _DATA = _CONFIG.data
+_FEATURES = _CONFIG.features
 
 
 class _FakeQuery:
@@ -99,3 +104,112 @@ def test_save_and_load_raw_csv_roundtrip(tmp_path: Path) -> None:
 def test_load_raw_csv_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(IngestionError, match="not found"):
         io.load_raw_csv(tmp_path / "missing.csv")
+
+
+# ------------------------------------------------------------------------------
+# T3.2: PubChem fingerprint boundary (PaDEL subprocess, no Java in unit tests)
+# ------------------------------------------------------------------------------
+def _fake_pubchem_csv(path: Path, n_rows: int, *, drop_columns: tuple[str, ...] = ()) -> None:
+    """Write a PaDEL-shaped CSV honouring (or breaking) the PubChem contract."""
+    columns = [PUBCHEM_FP_NAME_COLUMN, *(c for c in PUBCHEM_FP_COLUMNS if c not in drop_columns)]
+    frame = pd.DataFrame(
+        [[f"M{index}", *([0] * (len(columns) - 1))] for index in range(n_rows)], columns=columns
+    )
+    frame.to_csv(path, index=False)
+
+
+def _smiles_frame(n: int) -> tuple[pd.Series, pd.Series]:
+    return pd.Series(["CCO"] * n), pd.Series([f"M{index}" for index in range(n)])
+
+
+def test_pubchem_fingerprints_returns_contract_matrix(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The wrapper must drop Name, keep the 881 bits and align with the input."""
+    observed: dict[str, Any] = {}
+
+    def _fake_padeldescriptor(**kwargs: Any) -> None:
+        observed.update(kwargs)
+        smi_path = Path(kwargs["mol_dir"])
+        # The .smi file must be tab-separated, headerless, SMILES + id (NB04)
+        smi = pd.read_csv(smi_path, sep="\t", header=None)
+        assert smi.shape == (3, 2)
+        _fake_pubchem_csv(Path(kwargs["d_file"]), len(smi))
+
+    monkeypatch.setattr(padelpy, "padeldescriptor", _fake_padeldescriptor)
+    smiles, ids = _smiles_frame(3)
+    out = io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+    assert list(out.columns) == list(PUBCHEM_FP_COLUMNS)
+    assert out.shape == (3, PUBCHEM_FP_BITS)
+    # Thesis flags: salts removed, nitro standardized, input order retained
+    assert observed["removesalt"] is True
+    assert observed["standardizenitro"] is True
+    assert observed["fingerprints"] is True
+    assert observed["retainorder"] is True
+    assert observed["sp_timeout"] == _FEATURES.padel_timeout
+
+
+def test_pubchem_fingerprints_rejects_null_smiles(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A null SMILES would be dropped by PaDEL, silently shifting every row."""
+    monkeypatch.setattr(padelpy, "padeldescriptor", lambda **_: None)
+    smiles, ids = _smiles_frame(2)
+    smiles.iloc[1] = None
+    with pytest.raises(FeaturizationError, match="misalign"):
+        io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+
+def test_pubchem_fingerprints_rejects_ragged_or_empty_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(padelpy, "padeldescriptor", lambda **_: None)
+    smiles, ids = _smiles_frame(2)
+    with pytest.raises(FeaturizationError, match="mismatch"):
+        io.compute_pubchem_fingerprints(smiles, ids.iloc[:1], _FEATURES)
+    with pytest.raises(FeaturizationError, match="No molecules"):
+        io.compute_pubchem_fingerprints(smiles.iloc[:0], ids.iloc[:0], _FEATURES)
+
+
+def test_pubchem_fingerprints_translates_padel_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _broken(**_: Any) -> None:
+        raise RuntimeError("java exploded")
+
+    monkeypatch.setattr(padelpy, "padeldescriptor", _broken)
+    smiles, ids = _smiles_frame(1)
+    with pytest.raises(FeaturizationError, match="failed"):
+        io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+
+def test_pubchem_fingerprints_rejects_contract_violations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A truncated or short PaDEL output must never reach the training stage."""
+    smiles, ids = _smiles_frame(2)
+
+    def _missing_columns(**kwargs: Any) -> None:
+        _fake_pubchem_csv(Path(kwargs["d_file"]), 2, drop_columns=(PUBCHEM_FP_COLUMNS[5],))
+
+    def _short_output(**kwargs: Any) -> None:
+        _fake_pubchem_csv(Path(kwargs["d_file"]), 1)
+
+    def _no_output(**_: Any) -> None:
+        return None
+
+    for fake, match in (
+        (_missing_columns, "contract"),
+        (_short_output, "misalign"),
+        (_no_output, "descriptor file"),
+    ):
+        monkeypatch.setattr(padelpy, "padeldescriptor", fake)
+        with pytest.raises(FeaturizationError, match=match):
+            io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+
+@pytest.mark.padel
+@pytest.mark.skipif(shutil.which("java") is None, reason="requires a local Java runtime")
+def test_pubchem_fingerprints_real_padel_run() -> None:
+    """Integration: the bundled PaDEL jar emits the PubChem 881-bit matrix."""
+    smiles = pd.Series(["CCO", "CC(=O)Oc1ccccc1C(=O)O"])
+    ids = pd.Series(["ETHANOL", "ASPIRIN"])
+    out = io.compute_pubchem_fingerprints(smiles, ids, _FEATURES)
+
+    assert out.shape == (2, PUBCHEM_FP_BITS)
+    assert out.isin([0, 1]).all().all()
