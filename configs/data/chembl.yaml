@@ -5,11 +5,12 @@ assay_types: [B, F] # Binding + Functional assays only (NB01)
 standard_relation: "=" # exact measurements only
 
 # pChEMBL rescue: offset - log10(standard_value) by unit (NB02).
-# nM -> 9 - log10(v); uM/µM-class -> 6 - log10(v). Ignoring units shifts values 3 orders of magnitude.
+# nM -> 9 - log10(v); uM-class -> 6 - log10(v). Ignoring units shifts values 3 orders of magnitude.
+# NOTE: "µM" is the micro sign U+00B5 (what ChEMBL/NB02 emit), not the Greek mu U+03BC.
 rescue_unit_offsets:
   nM: 9.0
   uM: 6.0
-  "??M": 6.0
+  "µM": 6.0
   micromolar: 6.0
 
 active_threshold: 6.0 # active >= 6.0, inactive < 6.0 — NO gray zone (5-6 NOT excluded)

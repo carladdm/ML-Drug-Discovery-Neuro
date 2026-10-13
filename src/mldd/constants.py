@@ -38,6 +38,12 @@ NUM_H_DONORS: Final = "NumHDonors"
 NUM_H_ACCEPTORS: Final = "NumHAcceptors"
 LIPINSKI_DESCRIPTORS: Final[tuple[str, ...]] = (MW, LOGP, NUM_H_DONORS, NUM_H_ACCEPTORS)
 
+# ChEMBL raw-record columns consumed by the curation stage (NB01/NB02)
+ASSAY_DESCRIPTION: Final = "assay_description"
+VARIANT_SEQUENCE: Final = "variant_sequence"
+VARIANT_TYPE: Final = "variant_type"
+INCHI_KEY: Final = "inchi_key"
+
 # Columns kept by the curation stage (Notebook 02 contract)
 CURATED_COLUMNS: Final[tuple[str, ...]] = (
     MOLECULE_ID,

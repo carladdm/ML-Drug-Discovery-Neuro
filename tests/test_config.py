@@ -118,8 +118,9 @@ _BANNED = (
     "CHEMBL262",  # GSK3B
     "CHEMBL1075104",  # LRRK2
 )
-#: Legacy bridge modules with assigned rewrite tickets (Fase 2/T2.3, Fase 4/T4.1).
-_ALLOWLIST = {"dataset.py"}
+#: Modules exempt from the scan. Empty since Fase 2/T2.3 closed: every module
+#: in src/ must keep the scientific literals in configs/ only.
+_ALLOWLIST: set[str] = set()
 
 
 def test_no_scientific_literals_in_src() -> None:

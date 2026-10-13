@@ -19,6 +19,10 @@ class IngestionError(MLDDException):
     """ChEMBL ingestion failed (network error, empty result, rate-limit)."""
 
 
+class CurationError(MLDDException):
+    """The input dataframe violates the expected column contract for curation."""
+
+
 class InvalidSMILESError(MLDDException):
     """A SMILES string could not be parsed by RDKit."""
 
