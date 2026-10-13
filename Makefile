@@ -1,21 +1,70 @@
-.PHONY: setup train docker-build docker-run clean lint test
+# ==============================================================================
+# Cross-platform Makefile (GNU Make).
+# Works under bash/zsh (Linux, macOS, WSL, Git-Bash) and cmd/PowerShell on
+# Windows (install GNU Make via `choco install make` / `scoop install make`).
+# Every recipe runs `python -m ...` from the project venv — no shell activation.
+# ==============================================================================
 
-PYTHON = python3.12
+.DEFAULT_GOAL := help
 
-setup:
-	$(PYTHON) -m venv .venv
-	. .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+PY  ?= python
+VENV := .venv
 
-train:
-	. .venv/bin/activate && python -m src.modeling.train
+# Resolve the venv interpreter for the current platform.
+ifeq ($(OS),Windows_NT)
+	VENV_PY := $(VENV)/Scripts/python.exe
+else
+	VENV_PY := $(VENV)/bin/python
+endif
 
-docker-build:
+.PHONY: help setup install lint format typecheck test cov train tune predict report docker-build docker-run clean
+
+help: ## Show this help
+	@grep -E "^[a-zA-Z_-]+:.*?## .*$$" $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+setup: ## Create .venv and install the package with dev extras
+	$(PY) -m venv $(VENV)
+	$(VENV_PY) -m pip install --upgrade pip
+	$(VENV_PY) -m pip install -e ".[dev]"
+
+install: ## Install dev extras into the ACTIVE interpreter
+	$(PY) -m pip install -e ".[dev]"
+
+lint: ## Ruff lint + format check
+	$(VENV_PY) -m ruff check src tests scripts
+	$(VENV_PY) -m ruff format --check src tests scripts
+
+format: ## Auto-fix lint issues and format the code
+	$(VENV_PY) -m ruff check --fix src tests scripts
+	$(VENV_PY) -m ruff format src tests scripts
+
+typecheck: ## Neutralise broken rdkit stubs, then run mypy in strict mode
+	$(VENV_PY) scripts/ensure_rdkit_stubs_ok.py
+	$(VENV_PY) -m mypy
+
+test: ## Run the test suite
+	$(VENV_PY) -m pytest -q
+
+cov: ## Run tests with coverage report (terminal + HTML)
+	$(VENV_PY) -m pytest -q --cov=mldd --cov-report=term-missing --cov-report=html
+
+train: ## Train models (CLI lands in Fase 5 / T5.2)
+	$(VENV_PY) -m mldd.cli train
+
+tune: ## Optuna hyperparameter tuning (Fase 4 / T4.3 + Fase 5 CLI)
+	$(VENV_PY) -m mldd.cli tune
+
+predict: ## Run inference on new SMILES (Fase 6)
+	$(VENV_PY) -m mldd.cli predict
+
+report: ## Regenerate figures/reports (Fase 7)
+	$(VENV_PY) -m mldd.cli report
+
+docker-build: ## Build the production image
 	docker build -t ml-drug-discovery-neuro:latest .
 
-docker-run:
+docker-run: ## Run the container with mounted data/models volumes
 	docker run --rm -v $(PWD)/models:/app/models -v $(PWD)/data:/app/data ml-drug-discovery-neuro:latest
 
-clean:
-	rm -rf __pycache__ .pytest_cache .venv
-	find . -type d -name "__pycache__" -exec rm -r {} +
-	find . -type f -name "*.pyc" -delete
+clean: ## Remove caches and build artifacts
+	$(PY) -c "import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ('__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'htmlcov', 'dist', 'build')]"; $(PY) -c "import glob, os; [os.remove(f) for f in glob.glob('src/*.egg-info/*')] or None"

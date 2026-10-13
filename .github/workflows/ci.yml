@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "refactor/**"]
+  pull_request:
+    branches: [main, "refactor/**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint · Typecheck · Tests (Py3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff — lint
+        run: ruff check src tests scripts
+
+      - name: Ruff — format check
+        run: ruff format --check src tests scripts
+
+      - name: Mypy — strict
+        run: |
+          python scripts/ensure_rdkit_stubs_ok.py
+          mypy
+
+      - name: Pytest
+        run: pytest -q
