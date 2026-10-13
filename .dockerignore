@@ -1,0 +1,19 @@
+# Keep the production image slim: VCS, venvs, caches, data and artifacts.
+.git
+.github
+.venv
+venv
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+mlruns
+htmlcov
+.coverage
+data
+models
+reports
+notebooks
+tests
+*.md
+!README.md

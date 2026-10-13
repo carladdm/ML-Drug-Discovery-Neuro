@@ -14,10 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Instala el paquete (pyproject.toml) con sus dependencias para aprovechar la
+# caché de capas: cambios en el resto del repo no re-descargan las dependencias.
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir .
 
 COPY . .
 
-CMD ["python", "-m", "src.modeling.train"]
+# T5.4 (Fase 5) migrará este entrypoint a `mldd train`.
+CMD ["mldd", "version"]
