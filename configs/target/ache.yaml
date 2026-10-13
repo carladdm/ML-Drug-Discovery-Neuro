@@ -1,0 +1,6 @@
+# AChE — Acetylcholinesterase (Alzheimer's disease). NB01: 9,558 raw records.
+dataset: AChE
+chembl_id: CHEMBL220
+name: Acetylcholinesterase
+organism: Homo sapiens
+target_type: SINGLE PROTEIN

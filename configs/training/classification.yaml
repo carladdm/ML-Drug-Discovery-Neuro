@@ -1,0 +1,10 @@
+# Classification training protocol (active/inactive screening).
+task: classification
+test_size: 0.2
+# T1.3 decision: stratify=True for robustness under class imbalance.
+# The thesis notebooks did NOT stratify; to replicate that protocol exactly
+# override with training.stratify=false.
+stratify: true
+cv_folds: 5
+shuffle_cv: true # KFold(shuffle=True, random_state=seed) — NB06 protocol
+n_trials: 30 # Optuna TPE trials (Fase 4 / T4.3)

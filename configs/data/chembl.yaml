@@ -1,0 +1,16 @@
+# ChEMBL ingestion & curation rules (Notebook 01/02 science, Fase 2 / T2.2-T2.3).
+# Immutable domain values — see AGENTS.md "Reglas de dominio".
+standard_type: IC50
+assay_types: [B, F] # Binding + Functional assays only (NB01)
+standard_relation: "=" # exact measurements only
+
+# pChEMBL rescue: offset - log10(standard_value) by unit (NB02).
+# nM -> 9 - log10(v); uM/µM-class -> 6 - log10(v). Ignoring units shifts values 3 orders of magnitude.
+rescue_unit_offsets:
+  nM: 9.0
+  uM: 6.0
+  "??M": 6.0
+  micromolar: 6.0
+
+active_threshold: 6.0 # active >= 6.0, inactive < 6.0 — NO gray zone (5-6 NOT excluded)
+dedup_max_spread: 1.0 # drop InChIKey groups whose pChEMBL spread exceeds this

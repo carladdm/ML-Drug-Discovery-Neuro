@@ -1,0 +1,8 @@
+# LRRK2 (G2019S mutant) — derived from the LRRK2 parent dataset via the
+# variant_split regex (see lrrk2.yaml). NB01: 3,261 raw records.
+dataset: LRRK2_G2019S
+chembl_id: CHEMBL1075104
+name: Leucine-rich repeat kinase 2 (G2019S mutant)
+organism: Homo sapiens
+target_type: SINGLE PROTEIN
+derived_from: LRRK2

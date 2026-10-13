@@ -1,0 +1,24 @@
+# ==============================================================================
+# Top-level composition root (Hydra).
+# Single source of truth for every parameter, threshold and target.
+# Usage (Fase 5 CLI): mldd train target=maob task=regression
+# Library: from mldd.config import load_config; load_config(["target=maob"])
+# ==============================================================================
+defaults:
+  - data: chembl
+  - features: physchem
+  - model: baseline_rf
+  - training: regression
+  - target: maob # default dataset; override with target=ache|gsk3b|lrrk2|...
+  - _self_
+
+seed: 42 # global randomness seed (splits, estimators, Optuna sampler)
+
+paths: # resolved against the repo root (BASE_DIR) at runtime
+  data_dir: data
+  models_dir: models
+  reports_dir: reports/figures
+
+tracking: # MLflow (local file store; server-ready, Fase 5 / T5.1)
+  tracking_uri: mlruns
+  experiment_name: mldd-bioactivity

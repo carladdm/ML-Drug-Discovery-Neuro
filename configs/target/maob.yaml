@@ -1,0 +1,7 @@
+# MAO-B — Monoamine oxidase B (Parkinson's disease). NB01: 8,599 raw records.
+# CAUTION: the real ChEMBL accession is CHEMBL2039 (never CHEMBL203).
+dataset: MAO-B
+chembl_id: CHEMBL2039
+name: Monoamine oxidase B
+organism: Homo sapiens
+target_type: SINGLE PROTEIN

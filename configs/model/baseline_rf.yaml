@@ -1,0 +1,9 @@
+# Temporary RandomForest baseline (kept from the Phase-0 draft).
+# TODO (Fase 4 / T4.1-T4.3): replaced by the thesis model registry
+# (XGB/RF/LGBM/HGB/SVR/LDA) with Optuna-tuned params in frozen/*.yaml.
+name: random_forest
+params:
+  n_estimators: 500
+  max_depth: 15
+  min_samples_split: 5
+  n_jobs: -1

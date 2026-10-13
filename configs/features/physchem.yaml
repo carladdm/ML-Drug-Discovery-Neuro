@@ -1,0 +1,6 @@
+# Molecular featurization settings (Fase 3 / T3.2-T3.3).
+featurizer: pubchem_fp # pubchem_fp (PaDEL, 881-bit, thesis default) | morgan_fp (RDKit alternative)
+
+variance_threshold_pre: 0.0 # VarianceThreshold on raw PaDEL bits (NB04)
+variance_threshold_post: 0.16 # 2nd pass after merge: 0.8 * (1 - 0.8) (NB05)
+zscore_threshold: 3.0 # outlier filter |z| > 3 over 5 descriptors, single pass (NB03)

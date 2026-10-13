@@ -1,0 +1,6 @@
+# GSK-3β — Glycogen synthase kinase-3 beta (Alzheimer's disease). NB01: 4,944 raw records.
+dataset: GSK3B
+chembl_id: CHEMBL262
+name: Glycogen synthase kinase-3 beta
+organism: Homo sapiens
+target_type: SINGLE PROTEIN

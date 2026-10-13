@@ -1,0 +1,13 @@
+# LRRK2 (unified) — Leucine-rich repeat kinase 2 (Parkinson's disease). NB01: 6,601 raw records.
+# The variant_split regex (NB01/c18) derives the LRRK2_WT and LRRK2_G2019S
+# datasets from this parent target by scanning assay_description.
+dataset: LRRK2
+chembl_id: CHEMBL1075104
+name: Leucine-rich repeat kinase 2
+organism: Homo sapiens
+target_type: SINGLE PROTEIN
+variant_split:
+  inclusion_pattern: "G2019S|G2019-S|MUTANT|MUTATION"
+  exclusion_pattern: "SELECTIVITY OVER|VERSUS|VS|COMPARED TO|WT OVER"
+  g2019s_label: G2019S
+  wt_label: WT

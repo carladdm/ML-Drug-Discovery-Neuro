@@ -20,7 +20,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from mldd.config import MODEL_PARAMS, MODELS_DIR, SEED
+from mldd.config import MODELS_DIR, load_config
 from mldd.logging_utils import get_logger
 
 logger: logging.Logger = get_logger(__name__)
@@ -30,13 +30,18 @@ def train_classification_model(
     X: pd.DataFrame, y: pd.Series
 ) -> tuple[RandomForestClassifier, float]:
     """Train a Random Forest classifier to sort molecules into Active / Inactive."""
-    logger.info("Splitting data into stratified Train / Test (80/20)...")
+    cfg = load_config(["training=classification"])
+    logger.info(
+        "Splitting data into stratified Train / Test (%.0f/%.0f)...",
+        (1 - cfg.training.test_size) * 100,
+        cfg.training.test_size * 100,
+    )
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=SEED, stratify=y
+        X, y, test_size=cfg.training.test_size, random_state=cfg.seed, stratify=y
     )
 
     logger.info("Training RandomForestClassifier...")
-    clf = RandomForestClassifier(**MODEL_PARAMS)
+    clf = RandomForestClassifier(**cfg.model.params, random_state=cfg.seed)
     clf.fit(X_train, y_train)
 
     # Evaluate via probability for the ROC curve / AUC
@@ -56,11 +61,18 @@ def train_regression_model(
     X: pd.DataFrame, y: pd.Series
 ) -> tuple[RandomForestRegressor, float, float]:
     """Train a Random Forest regressor to predict the continuous pIC50 value."""
-    logger.info("Splitting regression data (80/20)...")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
+    cfg = load_config(["training=regression"])
+    logger.info(
+        "Splitting regression data (%.0f/%.0f)...",
+        (1 - cfg.training.test_size) * 100,
+        cfg.training.test_size * 100,
+    )
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=cfg.training.test_size, random_state=cfg.seed
+    )
 
     logger.info("Training RandomForestRegressor...")
-    reg = RandomForestRegressor(**MODEL_PARAMS)
+    reg = RandomForestRegressor(**cfg.model.params, random_state=cfg.seed)
     reg.fit(X_train, y_train)
 
     y_pred = reg.predict(X_test)
