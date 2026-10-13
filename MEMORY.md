@@ -6,7 +6,7 @@ Verdad científica y contexto inmutable del proyecto. **Consulta este archivo y 
 *   **Rama:** `refactor/production-architecture`.
 *   **Fase 0 completada + saneamiento posterior:** paquete `mldd` instalable (src-layout, hatchling), CLI Typer (`mldd version`; `train/tune/predict` llegan en Fases 4-7), Makefile cross-platform, CI (ruff → mypy strict → pytest, Py3.12), pre-commit. Gates locales en verde.
 *   **Deuda con ticket:** `src/mldd/dataset.py` aún replica la lógica académica incorrecta (zona gris 5-6, asunción nM, sin filtro `standard_relation`, sin split LRRK2). Congelada por `tests/test_scientific_contract.py` (xfail strict); reescribir en Fase 2 (T2.2-T2.3) ANTES de cualquier entrenamiento. `train.py` es un baseline RF estático, a reemplazar en Fases 4-5.
-*   **Puente autorizado (hasta Fase 1/T1.1):** targets/seed/params viven en `constants.py`/`config.py`; migrarán a `configs/` (Hydra+Pydantic). Módulos base y dependencias de la Fase 0 fueron aprobados por el roadmap.
+*   **Fase 1 completada (config centralizada):** `configs/` (YAML de Hydra) es la única fuente de verdad; `mldd.config.load_config(overrides)` compone con Hydra y valida con Pydantic v2 (`extra="forbid"`), lanzando `ConfigError`. Targets/seed/umbrales/params ya NO viven en `constants.py` (ahora solo `Task` + contratos de columnas). Perfiles: 6 targets × 2 tasks, política de `stratify` fijada (clasificación sí, regresión no; ver `TrainingConfig`).
 *   **Datos:** `data/` y `models/` gitignored; los CSV crudos de ChEMBL están sin trackear (regenerables vía ingesta, gestión por manifests).
 
 ## 2. Verdad Científica (NO ALTERAR)
@@ -25,7 +25,7 @@ Verdad científica y contexto inmutable del proyecto. **Consulta este archivo y 
 *   Filtros de varianza: 0 pre-proceso, 0.16 post-merge. Outliers: Z-score `|z|>3`, 5 descriptores, 1 pasada.
 
 ## 3. DoD
-1. Cero hardcode: parámetros/umbrales/paths en `configs/` (o `constants.py` como puente autorizado).
+1. Cero hardcode: parámetros/umbrales/targets/paths en `configs/` (los tests fallan si aparecen literales científicos en `src/`).
 2. Pydantic v2 en fronteras I/O; Pandera para DataFrames.
 3. I/O solo en `cli.py`, `io.py`, `trainer.py`, `predictor.py`; el resto, funciones puras.
 4. `ruff`, `mypy --strict`, `pytest` en verde; logging central (`logging_utils.py`), nunca `print()` en `src/mldd/`.

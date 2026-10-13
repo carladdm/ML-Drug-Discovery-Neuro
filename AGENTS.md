@@ -5,7 +5,7 @@ Plataforma de MLOps para el descubrimiento de fármacos neurológicos. Migra la 
 **Tecnologías clave:** Python 3.12/3.13, scikit-learn ≥1.6, XGBoost, LightGBM, RDKit ≥2026.03, PaDEL (Java 17), Pydantic v2, Hydra 1.3, Pandera, MLflow ≥2.14, pytest, Ruff, Mypy. *(Los floors viven en `pyproject.toml`; el venv local puede resolver versiones superiores.)*
 
 **Estructura clave (lo no obvio):**
-*   `configs/`: **Única fuente de verdad**. Contiene los YAML de Hydra. Ningún parámetro, umbral o target debe existir fuera de esta carpeta. *(Puente temporal autorizado hasta Fase 1/T1.1: `src/mldd/constants.py` y `src/mldd/config.py` alojan hoy targets/seed/params — ver MEMORY.md §1.)*
+*   `configs/`: **Única fuente de verdad**. Contiene los YAML de Hydra (`config.yaml` + grupos `target/`, `training/`, `data/`, `features/`, `model/`). Ningún parámetro, umbral o target debe existir fuera de esta carpeta; en `src/` solo viven los *schemas* (`mldd.config.AppConfig`) y la validación. *(El puente temporal `constants.py`/`config.py` se cerró en Fase 1.)*
 *   `src/mldd/`: Paquete principal bajo `src-layout`. Diseñado con interfaces desacopladas (data, features, models, training).
 *   `notebooks/`: Carpeta en modo *read-only*. Contiene la experimentación original (basura académica/scripts) que sirve **solo como referencia**. No ejecutar ni importar lógica de aquí.
 *   `data/` y `models/`: Directorios `.gitignored`. La gestión de I/O se realiza vía manifests generados dinámicamente por la aplicación.
@@ -24,7 +24,7 @@ Plataforma de MLOps para el descubrimiento de fármacos neurológicos. Migra la 
 *   **Patrones:** 
     *   *Funciones puras* para lógica de transformación de datos (sin I/O acoplado).
     *   Uso de Pydantic para validación en fronteras de I/O y Pandera para schemas de DataFrames.
-    *   *Archivo de referencia:* `src/mldd/config.py` (hoy: rutas vía pathlib + constants; en Fase 1 será el estándar de dataclasses Hydra+Pydantic).
+    *   *Archivo de referencia:* `src/mldd/config.py` (estándar Hydra+Pydantic: `load_config(overrides)` → `AppConfig`, con `ConfigError` en config inválida).
 
 ## Reglas de dominio / trampas conocidas
 *   **IDs ChEMBL Trampa:** El código viejo usaba `CHEMBL203` (erróneo) en lugar del real `CHEMBL2039` para MAO-B. Revisa siempre los IDs oficiales.

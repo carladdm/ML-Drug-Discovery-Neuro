@@ -102,6 +102,14 @@ ML-Drug-Discovery-Neuro/
 │   ├── processed/           # Curated pIC50 matrices & 881-bit PubChem fingerprint matrices
 │   └── external/
 │
+├── configs/                 # 🎯 Single source of truth (Hydra YAMLs, Pydantic-validated)
+│   ├── config.yaml          # Composition root: seed, paths, MLflow tracking
+│   ├── target/              # 6 datasets: ache, maob, gsk3b, lrrk2, lrrk2_wt, lrrk2_g2019s
+│   ├── training/            # classification (stratify) | regression (no stratify)
+│   ├── data/                # ChEMBL curation: pChEMBL threshold, dedup spread, unit rescue
+│   ├── features/            # Featurizer choice + variance/Z-score filters
+│   └── model/               # Baseline hyper-parameters (Optuna registry in Fase 4)
+│
 ├── models/                  
 │   └── .gitkeep
 │
@@ -121,8 +129,8 @@ ML-Drug-Discovery-Neuro/
 └── src/mldd/                 # Production-ready Python Package (src-layout)
     ├── __init__.py
     ├── cli.py                # Typer CLI entry point (`mldd`)
-    ├── config.py             # Pathlib dynamic routing & multi-target configurations
-    ├── constants.py          # Target registry (ChEMBL IDs), tasks & column contracts
+    ├── config.py             # Hydra composition + Pydantic v2 schemas (`load_config`)
+    ├── constants.py          # Task enum & dataframe column contracts
     ├── exceptions.py         # Domain-specific exception hierarchy
     ├── logging_utils.py      # Centralised logging setup
     ├── dataset.py            # Automated ChEMBL API ingestion & pIC50 transformations
