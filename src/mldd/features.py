@@ -32,7 +32,9 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Lipinski
 from rdkit.Chem.MolStandardize import rdMolStandardize
+from sklearn.feature_selection import VarianceThreshold
 
+from mldd.config import FeatureConfig
 from mldd.constants import (
     LOGP,
     MW,
@@ -42,6 +44,7 @@ from mldd.constants import (
     SMILES_CLEAN,
     STANDARD_UNITS,
     STANDARD_VALUE,
+    ZSCORE_DESCRIPTORS,
 )
 from mldd.exceptions import FeaturizationError
 from mldd.logging_utils import get_logger
@@ -212,9 +215,127 @@ def prepare_physchem_features(df: pd.DataFrame) -> pd.DataFrame:
     return with_descriptors.reset_index(drop=True)
 
 
+def remove_zscore_outliers(df: pd.DataFrame, feature_config: FeatureConfig) -> pd.DataFrame:
+    """Drop extreme rows with the Z-score over five descriptors (NB03 cell 30).
+
+    The notebook computes the mean/std of each descriptor ONCE over the whole
+    frame and OR-combines the ``|z| > threshold`` masks into a single pass:
+    statistics are never recomputed after removals, so a row can only be an
+    outlier relative to the *original* distribution. Descriptors with zero
+    variance are skipped (their z-score is undefined). ``pchembl_value`` takes
+    part alongside the four Lipinski descriptors, exactly as in the thesis.
+
+    Args:
+        df: Frame with ``ZSCORE_DESCRIPTORS`` columns present.
+        feature_config: Supplies ``zscore_threshold`` (from configs/, never
+            hardcoded here).
+
+    Returns:
+        The frame without outlier rows, with a reset index and unchanged
+        columns.
+
+    Raises:
+        FeaturizationError: A required descriptor column is missing.
+    """
+    _require_columns(df, ZSCORE_DESCRIPTORS, "remove_zscore_outliers")
+    outlier_mask = pd.Series(False, index=df.index)
+    for descriptor in ZSCORE_DESCRIPTORS:
+        values = pd.to_numeric(df[descriptor], errors="coerce")
+        std = values.std()
+        if std > 0:
+            zscore = (values - values.mean()) / std
+            outlier_mask = outlier_mask | (zscore.abs() > feature_config.zscore_threshold)
+        else:
+            logger.info("Descriptor '%s' has zero variance; skipping Z-score.", descriptor)
+
+    kept = df[~outlier_mask].copy().reset_index(drop=True)
+    logger.info(
+        "Z-score outliers removed: %d of %d rows (|z| > %s).",
+        len(df) - len(kept),
+        len(df),
+        feature_config.zscore_threshold,
+    )
+    return kept
+
+
+def filter_low_variance(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
+    """Drop features whose variance does not exceed ``threshold`` (NB04/NB05).
+
+    This is the sklearn ``VarianceThreshold`` used verbatim by the notebooks:
+    a feature survives only when its variance is *strictly greater* than the
+    threshold. The pre-process pass uses ``variance_threshold_pre`` on the raw
+    PaDEL bits (NB04); the second pass uses ``variance_threshold_post`` on the
+    merged matrix (NB05, ``0.8 * (1 - 0.8)``). Both values live in
+    ``configs/features/physchem.yaml``.
+
+    Args:
+        df: Feature matrix (fingerprint bits or merged X+targets).
+        threshold: Minimum exclusive variance, from the composed config.
+
+    Returns:
+        The filtered matrix with only the surviving feature columns, in order.
+
+    Raises:
+        FeaturizationError: The matrix is empty, or the threshold would remove
+            every feature (a misconfigured threshold, never a silent empty X).
+    """
+    if df.empty:
+        raise FeaturizationError("Variance filter received an empty feature matrix.")
+    selector = VarianceThreshold(threshold=threshold)
+    try:
+        filtered = selector.fit_transform(df)
+    except ValueError as exc:  # sklearn: no feature meets the threshold
+        raise FeaturizationError(
+            f"Variance threshold {threshold} removed every feature: {exc}"
+        ) from exc
+
+    kept = list(df.columns[selector.get_support(indices=True)])
+    logger.info(
+        "Variance filter (>%s): kept %d of %d features (%d removed).",
+        threshold,
+        len(kept),
+        df.shape[1],
+        df.shape[1] - len(kept),
+    )
+    return pd.DataFrame(filtered, columns=kept)
+
+
+def merge_fingerprints_and_targets(
+    fingerprints: pd.DataFrame, targets: pd.DataFrame
+) -> pd.DataFrame:
+    """Horizontally merge the feature matrix with the target columns (NB04 step 5).
+
+    Both frames are joined positionally, so their indexes are reset first —
+    relying on shared labels is what silently misaligns X and y in the legacy
+    notebooks.
+
+    Args:
+        fingerprints: The (filtered) fingerprint/descriptor matrix.
+        targets: The target columns (``bioactivity_class``, ``pchembl_value``).
+
+    Returns:
+        The merged modelling matrix: features first, then targets, row-aligned.
+
+    Raises:
+        FeaturizationError: The two frames have different lengths.
+    """
+    if len(fingerprints) != len(targets):
+        raise FeaturizationError(
+            f"Feature/target length mismatch: {len(fingerprints)} vs {len(targets)}."
+        )
+    merged = pd.concat(
+        [fingerprints.reset_index(drop=True), targets.reset_index(drop=True)], axis=1
+    )
+    logger.info("Merged feature matrix: %d rows x %d columns.", len(merged), merged.shape[1])
+    return merged
+
+
 __all__ = [
     "add_standardized_smiles",
     "compute_lipinski_descriptors",
+    "filter_low_variance",
+    "merge_fingerprints_and_targets",
     "prepare_physchem_features",
+    "remove_zscore_outliers",
     "standardize_smiles",
 ]
