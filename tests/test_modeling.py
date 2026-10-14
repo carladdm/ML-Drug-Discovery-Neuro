@@ -7,13 +7,16 @@ The search spaces come from ``configs/model/registry.yaml`` via
 from __future__ import annotations
 
 import numpy as np
+import optuna
 import pandas as pd
 import pytest
+from optuna import Trial
 
 from mldd.config import AlgorithmName, load_config
 from mldd.constants import Task
 from mldd.exceptions import TrainingError
 from mldd.modeling.models import build_estimator, build_pipeline
+from mldd.modeling.tuning import TuningResult, select_best, suggest_params, tune_candidate
 
 _REGISTRY_MODEL = load_config(["model=registry"]).model
 
@@ -78,3 +81,52 @@ def test_build_pipeline_scale_policy() -> None:
     assert "scaler" in scaled.named_steps and "model" in scaled.named_steps
     plain = build_pipeline(estimator, scale=False)
     assert "scaler" not in plain.named_steps
+
+
+# ------------------------------------------------------------------------------
+# T4.2: Optuna engine over the config-declared search spaces
+# ------------------------------------------------------------------------------
+def test_suggest_params_follows_declared_space() -> None:
+    """Every declared param is suggested exactly once, within its bounds."""
+    space = _REGISTRY_MODEL.candidate(Task.REGRESSION, "rf").space
+    study = optuna.create_study()
+
+    def _dummy(trial: Trial) -> float:
+        params = suggest_params(trial, space)
+        assert set(params) == set(space)
+        assert space["n_estimators"].low <= params["n_estimators"] <= space["n_estimators"].high
+        assert params["max_features"] in ("sqrt", "log2", None)
+        return 0.0
+
+    study.optimize(_dummy, n_trials=3)
+
+
+def test_tune_candidate_is_deterministic_under_seed() -> None:
+    """Same data + same seed => same best params and score (seeded TPE)."""
+    X, y = _tiny_xy(Task.REGRESSION)
+    training = load_config(
+        ["training=regression", "training.n_trials=2", "training.cv_folds=3"]
+    ).training
+    candidate = _REGISTRY_MODEL.candidate(Task.REGRESSION, "rf")
+    first = tune_candidate(
+        X, y, task=Task.REGRESSION, name="rf", candidate=candidate, training=training, seed=42
+    )
+    second = tune_candidate(
+        X, y, task=Task.REGRESSION, name="rf", candidate=candidate, training=training, seed=42
+    )
+    assert first.best_params == second.best_params
+    assert first.best_score == pytest.approx(second.best_score)
+    assert first.n_trials == 2
+
+
+def test_select_best_picks_highest_cv_score() -> None:
+    results = [
+        TuningResult(algorithm="rf", best_params={}, best_score=0.1, n_trials=2),
+        TuningResult(algorithm="xgb", best_params={}, best_score=0.9, n_trials=2),
+    ]
+    assert select_best(results).algorithm == "xgb"
+
+
+def test_select_best_rejects_empty_list() -> None:
+    with pytest.raises(TrainingError, match="empty"):
+        select_best([])
