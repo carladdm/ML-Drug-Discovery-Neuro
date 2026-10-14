@@ -186,4 +186,4 @@ def test_configs_tree_is_complete() -> None:
     assert (CONFIG_DIR / "training" / "regression.yaml").is_file()
     assert (CONFIG_DIR / "data" / "chembl.yaml").is_file()
     assert (CONFIG_DIR / "features" / "physchem.yaml").is_file()
-    assert (CONFIG_DIR / "model" / "baseline_rf.yaml").is_file()
+    assert (CONFIG_DIR / "model" / "registry.yaml").is_file()

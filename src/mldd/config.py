@@ -163,27 +163,25 @@ class CandidateConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Thesis model registry (Fase 4 / T4.1): candidates + search spaces per task.
 
-    Replaces the Phase-0 RandomForest baseline: every task declares its
-    candidate algorithms (NB06: XGB/RF/LGBM/LDA; NB07: XGB/RF/HGB/SVR) and a
-    search space per candidate. The legacy baseline keys disappear in T4.3.
+    Every task declares its candidate algorithms (NB06: XGB/RF/LGBM/LDA;
+    NB07: XGB/RF/HGB/SVR) and a search space per candidate. The Phase-0
+    RandomForest baseline (``baseline_rf.yaml``) was removed in T4.3.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    # Legacy Phase-0 baseline (removed in T4.3 with baseline_rf.yaml).
-    name: str | None = None
-    params: dict[str, Any] = Field(default_factory=dict)
-    # Thesis registry.
-    candidates: dict[Task, list[AlgorithmName]] = Field(default_factory=dict)
-    spaces: dict[Task, dict[AlgorithmName, CandidateConfig]] = Field(default_factory=dict)
+    candidates: dict[Task, list[AlgorithmName]] = Field(min_length=1)
+    spaces: dict[Task, dict[AlgorithmName, CandidateConfig]] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _candidates_have_spaces(self) -> Self:
         """Every declared candidate needs a search space for its own task."""
+        if set(self.candidates) != set(self.spaces):
+            raise ValueError("candidates and spaces must declare the same tasks")
         for task, names in self.candidates.items():
             if not names:
                 raise ValueError(f"candidates for task '{task}' must not be empty")
-            missing = [name for name in names if name not in self.spaces.get(task, {})]
+            missing = [name for name in names if name not in self.spaces[task]]
             if missing:
                 raise ValueError(
                     f"candidates {missing} of task '{task}' have no search space declared"

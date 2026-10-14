@@ -7,7 +7,7 @@
 defaults:
   - data: chembl
   - features: physchem
-  - model: baseline_rf
+  - model: registry # thesis model registry (NB06/NB07) with Optuna spaces
   - training: regression
   - target: maob # default dataset; override with target=ache|gsk3b|lrrk2|...
   - _self_
