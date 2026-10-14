@@ -17,7 +17,7 @@ else
 	VENV_PY := $(VENV)/bin/python
 endif
 
-.PHONY: help setup install lint format typecheck test cov train tune predict report docker-build docker-run clean
+.PHONY: help setup install lint format typecheck test cov ingest featurize train predict report docker-build docker-run clean
 
 help: ## Show this help
 	@grep -E "^[a-zA-Z_-]+:.*?## .*$$" $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -48,11 +48,14 @@ test: ## Run the test suite
 cov: ## Run tests with coverage report (terminal + HTML)
 	$(VENV_PY) -m pytest -q --cov=mldd --cov-report=term-missing --cov-report=html
 
-train: ## Train models (CLI lands in Fase 5 / T5.2)
-	$(VENV_PY) -m mldd.cli train
+ingest: ## Fetch + curate one target: make ingest ARGS="target=maob"
+	$(VENV_PY) -m mldd.cli ingest $(ARGS)
 
-tune: ## Optuna hyperparameter tuning (Fase 4 / T4.3 + Fase 5 CLI)
-	$(VENV_PY) -m mldd.cli tune
+featurize: ## Build the model matrix: make featurize ARGS="target=maob"
+	$(VENV_PY) -m mldd.cli featurize $(ARGS)
+
+train: ## Tune the registry + train (MLflow): make train ARGS="target=maob task=regression"
+	$(VENV_PY) -m mldd.cli train $(ARGS)
 
 predict: ## Run inference on new SMILES (Fase 6)
 	$(VENV_PY) -m mldd.cli predict

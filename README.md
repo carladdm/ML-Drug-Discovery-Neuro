@@ -128,7 +128,7 @@ ML-Drug-Discovery-Neuro/
 │
 └── src/mldd/                 # Production-ready Python Package (src-layout)
     ├── __init__.py
-    ├── cli.py                # Typer CLI entry point (`mldd`)
+    ├── cli.py                # Typer CLI entry point (`mldd ingest/featurize/train`)
     ├── config.py             # Hydra composition + Pydantic v2 schemas (`load_config`)
     ├── constants.py          # Task enum & dataframe column contracts
     ├── exceptions.py         # Domain-specific exception hierarchy
@@ -136,6 +136,7 @@ ML-Drug-Discovery-Neuro/
     ├── logging_utils.py      # Centralised logging setup
     ├── dataset.py            # Pure curation: pChEMBL rescue, InChIKey dedup, labels, LRRK2 split
     ├── features.py           # Pure features: RDKit standardization, Lipinski, Z-score & variance filters
+    ├── trainer.py            # MLflow-tracked training boundary (matrix load + persistence)
     └── modeling/
         ├── __init__.py
         ├── models.py         # Estimator registry factory + pipeline scale policy
@@ -212,8 +213,10 @@ cd ML-Drug-Discovery-Neuro
 # 2. Automated environment setup (Creates .venv & installs pinned dependencies)
 make setup
 
-# 3. Execute modular pipeline
-make train
+# 3. Execute the modular pipeline (Hydra overrides passed as arguments)
+make ingest ARGS="target=maob"                 # ChEMBL fetch + NB02 curation
+make featurize ARGS="target=maob"              # PaDEL PubChem FP + filters
+make train ARGS="target=maob task=regression"  # Optuna registry + MLflow tracking
 ```
 ### Option B: Docker Container Execution
 
