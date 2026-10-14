@@ -108,7 +108,7 @@ ML-Drug-Discovery-Neuro/
 │   ├── training/            # classification (stratify) | regression (no stratify)
 │   ├── data/                # ChEMBL curation: pChEMBL threshold, dedup spread, unit rescue
 │   ├── features/            # Featurizer choice + variance/Z-score filters
-│   └── model/               # Baseline hyper-parameters (Optuna registry in Fase 4)
+│   └── model/               # Thesis model registry: candidates + Optuna search spaces (NB06/NB07)
 │
 ├── models/                  
 │   └── .gitkeep
@@ -138,7 +138,9 @@ ML-Drug-Discovery-Neuro/
     ├── features.py           # Pure features: RDKit standardization, Lipinski, Z-score & variance filters
     └── modeling/
         ├── __init__.py
-        ├── train.py          # Dual training workflows (Classification & Regression)
+        ├── models.py         # Estimator registry factory + pipeline scale policy
+        ├── tuning.py         # Seeded Optuna TPE engine over config-declared search spaces
+        ├── train.py          # Registry-driven training workflows (Classification & Regression)
         └── predict.py        # Inference engine on new SMILES candidates
 ```
 ---
