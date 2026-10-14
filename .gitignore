@@ -23,6 +23,10 @@ data/external/*
 models/*
 !models/.gitkeep
 
+# MLflow local (SQLite backend desde Fase 5; el file store mlruns/ queda por si acaso)
+mlflow.db
+mlruns/
+
 # Artefactos de build y empaquetado
 *.egg-info/
 dist/

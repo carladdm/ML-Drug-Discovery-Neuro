@@ -19,6 +19,6 @@ paths: # resolved against the repo root (BASE_DIR) at runtime
   models_dir: models
   reports_dir: reports/figures
 
-tracking: # MLflow (local file store; server-ready, Fase 5 / T5.1)
-  tracking_uri: mlruns
+tracking: # MLflow (local SQLite store; server-ready by overriding the URI, Fase 5 / T5.1)
+  tracking_uri: sqlite:///mlflow.db
   experiment_name: mldd-bioactivity

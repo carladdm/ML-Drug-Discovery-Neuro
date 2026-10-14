@@ -2,9 +2,10 @@
 
 Fase 4 / T4.3: every candidate of the task registry (NB06/NB07) is tuned
 with a seeded Optuna study, the winner by cross-validated score is refitted
-on the training split and scored on the holdout. Fase 5 / T5.1 wraps this
-into the MLflow-tracked trainer and moves persistence out of this module
-(debt B15).
+on the training split and scored on the holdout. This module is I/O-free:
+config loading happens in the :func:`train_*` convenience wrappers, while
+persistence and MLflow tracking live in :mod:`mldd.trainer` (debt B15,
+closed in Fase 5 / T5.1).
 """
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import joblib
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
@@ -24,7 +24,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from mldd.config import MODELS_DIR, AlgorithmName, AppConfig, load_config
+from mldd.config import AlgorithmName, AppConfig, load_config
 from mldd.constants import Task
 from mldd.logging_utils import get_logger
 from mldd.modeling.models import build_estimator, build_pipeline
@@ -88,29 +88,18 @@ def _final_pipeline(cfg: AppConfig, task: Task, best: TuningResult) -> Any:
     return build_pipeline(estimator, scale=candidate.scale)
 
 
-def _persist(cfg: AppConfig, pipeline: Any, task: Task, algorithm: AlgorithmName) -> None:
-    """Persist the fitted pipeline under models/ (debt B15: Fase 5 trainer)."""
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    model_path = MODELS_DIR / f"{cfg.target.name}_{task.value}_{algorithm}.joblib"
-    joblib.dump(pipeline, model_path)
-    logger.info("Model persisted to %s", model_path)
-
-
-def train_classification_model(
-    X: pd.DataFrame, y: pd.Series, overrides: list[str] | None = None
-) -> ClassificationResult:
+def fit_classification_model(X: pd.DataFrame, y: pd.Series, cfg: AppConfig) -> ClassificationResult:
     """Tune the classification registry, refit the winner, score the holdout.
 
-    Reproduces NB06 at production quality: the holdout split honours the
-    stratify policy from ``configs/training/classification.yaml``, every
-    candidate is tuned with a seeded TPE study and the winner is the one
-    with the best mean CV MCC.
+    Pure orchestration over an already-loaded config (no config loading, no
+    persistence): reproduces NB06 at production quality — the holdout split
+    honours the stratify policy, every candidate is tuned with a seeded TPE
+    study and the winner has the best mean CV MCC.
 
     Args:
         X: Feature matrix (e.g. PaDEL PubChem fingerprints).
         y: Binary target (0 = inactive, 1 = active).
-        overrides: Extra Hydra overrides (``target=ache``,
-            ``training.n_trials=2``...).
+        cfg: Validated configuration (``training=classification``).
 
     Returns:
         The fitted pipeline plus CV and holdout metrics (MCC, ROC-AUC,
@@ -118,9 +107,7 @@ def train_classification_model(
 
     Raises:
         TrainingError: Tuning failed or the classification registry is empty.
-        ConfigError: Invalid configuration composition/validation.
     """
-    cfg = load_config(["training=classification", *(overrides or [])])
     logger.info(
         "Splitting data into Train / Test (%.0f/%.0f)...",
         (1 - cfg.training.test_size) * 100,
@@ -153,7 +140,6 @@ def train_classification_model(
         holdout_roc_auc=float(roc_auc_score(y_test, probs)),
         holdout_accuracy=float(accuracy_score(y_test, preds)),
     )
-    _persist(cfg, result.pipeline, Task.CLASSIFICATION, result.algorithm)
     logger.info(
         "Classification finished. Holdout MCC=%.4f | ROC-AUC=%.4f | Acc=%.4f",
         result.holdout_mcc,
@@ -163,30 +149,48 @@ def train_classification_model(
     return result
 
 
-def train_regression_model(
+def train_classification_model(
     X: pd.DataFrame, y: pd.Series, overrides: list[str] | None = None
-) -> RegressionResult:
+) -> ClassificationResult:
+    """Load the classification protocol from ``configs/`` and fit.
+
+    Args:
+        X: Feature matrix (e.g. PaDEL PubChem fingerprints).
+        y: Binary target (0 = inactive, 1 = active).
+        overrides: Extra Hydra overrides (``target=ache``,
+            ``training.n_trials=2``...).
+
+    Returns:
+        The fitted pipeline plus CV and holdout metrics.
+
+    Raises:
+        ConfigError: Invalid configuration composition/validation.
+        TrainingError: Tuning failed or the classification registry is empty.
+    """
+    cfg = load_config(["training=classification", *(overrides or [])])
+    return fit_classification_model(X, y, cfg)
+
+
+def fit_regression_model(X: pd.DataFrame, y: pd.Series, cfg: AppConfig) -> RegressionResult:
     """Tune the regression registry, refit the winner, score the holdout.
 
-    Reproduces NB07 at production quality: no stratification (T1.3 policy),
-    every candidate tuned with a seeded TPE study maximising R² over the
-    configured KFold, winner refitted and scored with R² and RMSE on the
-    holdout.
+    Pure orchestration over an already-loaded config (no config loading, no
+    persistence): reproduces NB07 at production quality — no stratification
+    (T1.3 policy), every candidate tuned with a seeded TPE study maximising
+    R² over the configured KFold, winner refitted and scored with R² and
+    RMSE on the holdout.
 
     Args:
         X: Feature matrix (e.g. PaDEL PubChem fingerprints).
         y: Continuous target (pChEMBL value).
-        overrides: Extra Hydra overrides (``target=ache``,
-            ``training.n_trials=2``...).
+        cfg: Validated configuration (``training=regression``).
 
     Returns:
         The fitted pipeline plus CV and holdout metrics (R², RMSE).
 
     Raises:
         TrainingError: Tuning failed or the regression registry is empty.
-        ConfigError: Invalid configuration composition/validation.
     """
-    cfg = load_config(["training=regression", *(overrides or [])])
     logger.info(
         "Splitting regression data (%.0f/%.0f)...",
         (1 - cfg.training.test_size) * 100,
@@ -213,10 +217,31 @@ def train_regression_model(
         holdout_r2=float(r2_score(y_test, preds)),
         holdout_rmse=float(root_mean_squared_error(y_test, preds)),
     )
-    _persist(cfg, result.pipeline, Task.REGRESSION, result.algorithm)
     logger.info(
         "pChEMBL regression finished. Holdout R2=%.4f | RMSE=%.4f",
         result.holdout_r2,
         result.holdout_rmse,
     )
     return result
+
+
+def train_regression_model(
+    X: pd.DataFrame, y: pd.Series, overrides: list[str] | None = None
+) -> RegressionResult:
+    """Load the regression protocol from ``configs/`` and fit.
+
+    Args:
+        X: Feature matrix (e.g. PaDEL PubChem fingerprints).
+        y: Continuous target (pChEMBL value).
+        overrides: Extra Hydra overrides (``target=ache``,
+            ``training.n_trials=2``...).
+
+    Returns:
+        The fitted pipeline plus CV and holdout metrics.
+
+    Raises:
+        ConfigError: Invalid configuration composition/validation.
+        TrainingError: Tuning failed or the regression registry is empty.
+    """
+    cfg = load_config(["training=regression", *(overrides or [])])
+    return fit_regression_model(X, y, cfg)

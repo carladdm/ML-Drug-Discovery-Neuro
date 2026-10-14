@@ -6,8 +6,6 @@ The search spaces come from ``configs/model/registry.yaml`` via
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import optuna
 import pandas as pd
@@ -141,23 +139,22 @@ def test_select_best_rejects_empty_list() -> None:
 _FAST_PROTOCOL = ["training.n_trials=2", "training.cv_folds=3"]
 
 
-def test_train_classification_end_to_end(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("mldd.modeling.train.MODELS_DIR", tmp_path)
+def test_train_classification_end_to_end() -> None:
+    """Full tune → select → refit → holdout workflow on toy data (I/O-free)."""
     X, y = _tiny_xy(Task.CLASSIFICATION)
     result = train_classification_model(X, y, overrides=[*_FAST_PROTOCOL, "training.stratify=true"])
     assert result.algorithm in ("xgb", "rf", "lgbm", "lda")
     assert -1.0 <= result.holdout_mcc <= 1.0
     assert 0.0 <= result.holdout_roc_auc <= 1.0
     assert 0.0 <= result.holdout_accuracy <= 1.0
-    assert result.best_params  # best trial parameters were persisted alongside
-    assert list(tmp_path.glob("*.joblib"))
+    assert result.best_params  # best trial parameters of the winning study
 
 
-def test_train_regression_end_to_end(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("mldd.modeling.train.MODELS_DIR", tmp_path)
+def test_train_regression_end_to_end() -> None:
+    """Full tune → select → refit → holdout workflow on toy data (I/O-free)."""
     X, y = _tiny_xy(Task.REGRESSION)
     result = train_regression_model(X, y, overrides=_FAST_PROTOCOL)
     assert result.algorithm in ("xgb", "rf", "hgb", "svr")
     assert result.holdout_rmse >= 0.0
     assert result.holdout_r2 <= 1.0
-    assert list(tmp_path.glob("*.joblib"))
+    assert result.best_params

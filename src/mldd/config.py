@@ -232,7 +232,12 @@ class PathsConfig(BaseModel):
 
 
 class TrackingConfig(BaseModel):
-    """MLflow tracking (local file store; server-ready, Fase 5 / T5.1)."""
+    """MLflow tracking (local SQLite store; server-ready, Fase 5 / T5.1).
+
+    MLflow ≥3 put the ``mlruns/`` filesystem store in maintenance mode, so
+    the default backend is ``sqlite:///``; relative paths are resolved
+    against the repo root by :mod:`mldd.trainer`.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
