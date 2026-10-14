@@ -6,3 +6,4 @@ stratify: false
 cv_folds: 5
 shuffle_cv: true # KFold(shuffle=True, random_state=seed) — NB06 protocol
 n_trials: 30 # Optuna TPE trials (Fase 4 / T4.3)
+scoring: r2 # NB07 maximises R² over CV folds

@@ -1,0 +1,77 @@
+# Thesis model registry (Fase 4 / T4.1) — NB06 classification + NB07 regression.
+# Single source of truth for candidate algorithms and Optuna search spaces.
+# Usage: mldd train target=maob task=regression   (every candidate tuned, best
+# candidate by cross-validated score wins; restrict with model.candidates.*=xgb).
+#
+# scale: pipeline policy from the notebooks — NB06 wraps EVERY classifier in
+#        StandardScaler; NB07 scales only SVR (tree models see raw features).
+# fixed: operational params (parallelism, verbosity); random_state is injected
+#        at runtime from the global seed (configs/config.yaml `seed`).
+# space: Optuna search space — {type: int|float|categorical, low, high, log, choices}.
+candidates:
+  classification: [xgb, rf, lgbm, lda]
+  regression: [xgb, rf, hgb, svr]
+spaces:
+  classification:
+    xgb: # NB06: XGBClassifier + StandardScaler
+      scale: true
+      fixed:
+        n_jobs: -1
+      space:
+        n_estimators: { type: int, low: 100, high: 800 }
+        max_depth: { type: int, low: 3, high: 10 }
+        learning_rate: { type: float, low: 0.01, high: 0.2, log: true }
+    rf: # NB06: RandomForestClassifier + StandardScaler
+      scale: true
+      fixed:
+        n_jobs: -1
+      space:
+        n_estimators: { type: int, low: 100, high: 500 }
+        max_depth: { type: int, low: 5, high: 35 }
+    lgbm: # NB06: LGBMClassifier + StandardScaler (verbosity=-1 silences LightGBM)
+      scale: true
+      fixed:
+        n_jobs: -1
+        verbosity: -1
+      space:
+        n_estimators: { type: int, low: 100, high: 500 }
+        num_leaves: { type: int, low: 20, high: 150 }
+        learning_rate: { type: float, low: 0.01, high: 0.2, log: true }
+    lda: # NB06: LDA(solver=lsqr|eigen, shrinkage=...) + StandardScaler; deterministic
+      scale: true
+      fixed: {}
+      space:
+        solver: { type: categorical, choices: [lsqr, eigen] }
+        shrinkage: { type: float, low: 0.0, high: 1.0 }
+  regression:
+    xgb: # NB07: XGBRegressor on raw features (+ subsample vs classification)
+      scale: false
+      fixed:
+        n_jobs: -1
+      space:
+        n_estimators: { type: int, low: 100, high: 800 }
+        max_depth: { type: int, low: 3, high: 10 }
+        learning_rate: { type: float, low: 0.01, high: 0.2, log: true }
+        subsample: { type: float, low: 0.6, high: 1.0 }
+    rf: # NB07: RandomForestRegressor on raw features (+ max_features choices)
+      scale: false
+      fixed:
+        n_jobs: -1
+      space:
+        n_estimators: { type: int, low: 100, high: 500 }
+        max_depth: { type: int, low: 5, high: 35 }
+        max_features: { type: categorical, choices: [sqrt, log2, null] }
+    hgb: # NB07: HistGradientBoostingRegressor on raw features
+      scale: false
+      fixed: {}
+      space:
+        max_iter: { type: int, low: 100, high: 500 }
+        learning_rate: { type: float, low: 0.01, high: 0.2, log: true }
+        max_leaf_nodes: { type: int, low: 20, high: 100 }
+    svr: # NB07: SVR is the only scaled regressor; deterministic (no random_state)
+      scale: true
+      fixed: {}
+      space:
+        C: { type: float, low: 0.01, high: 100.0, log: true }
+        epsilon: { type: float, low: 0.001, high: 0.5, log: true }
+        gamma: { type: categorical, choices: [scale, auto] }

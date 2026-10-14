@@ -40,6 +40,12 @@ PROCESSED_DATA_DIR: Final = DATA_DIR / "processed"
 MODELS_DIR: Final = BASE_DIR / "models"
 REPORTS_DIR: Final = BASE_DIR / "reports" / "figures"
 
+# ------------------------------------------------------------------------------
+# Registry vocabularies (Fase 4) — mirrored by configs/model/registry.yaml
+# ------------------------------------------------------------------------------
+AlgorithmName = Literal["xgb", "rf", "lgbm", "hgb", "svr", "lda"]
+ScoringName = Literal["mcc", "r2"]
+
 
 # ------------------------------------------------------------------------------
 # Schema (T1.1) — mirrors configs/*.yaml; extra keys are rejected
@@ -103,13 +109,97 @@ class FeatureConfig(BaseModel):
     padel_timeout: int = Field(gt=0, description="Subprocess cap (s) for the PaDEL Java run.")
 
 
-class ModelConfig(BaseModel):
-    """Baseline estimator hyper-parameters (Fase 4 swaps in the Optuna registry)."""
+class SearchSpaceParamConfig(BaseModel):
+    """One tunable hyper-parameter: how Optuna must suggest it (Fase 4 / T4.1).
+
+    Numeric params declare ``low``/``high`` (plus optional log-uniform
+    sampling); categorical params declare ``choices`` (``null`` allowed, e.g.
+    ``max_features`` in NB07). Values live only in ``configs/model/*.yaml``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1)
+    type: Literal["int", "float", "categorical"]
+    low: float | None = None
+    high: float | None = None
+    log: bool = False
+    choices: list[str | int | float | None] | None = None
+
+    @model_validator(mode="after")
+    def _bounds_match_type(self) -> Self:
+        """Reject inconsistent declarations (missing bounds/choices, log<=0)."""
+        if self.type == "categorical":
+            if not self.choices:
+                raise ValueError("categorical params require a non-empty 'choices' list")
+            if self.low is not None or self.high is not None:
+                raise ValueError("'low'/'high' are only valid for int/float params")
+            if self.log:
+                raise ValueError("'log' is only valid for int/float params")
+        else:
+            if self.low is None or self.high is None:
+                raise ValueError(f"{self.type} params require both 'low' and 'high'")
+            if self.low >= self.high:
+                raise ValueError("'low' must be strictly below 'high'")
+            if self.log and self.low <= 0:
+                raise ValueError("log-scaled params require low > 0")
+        return self
+
+
+class CandidateConfig(BaseModel):
+    """One registry candidate (Fase 4): estimator policy + Optuna search space.
+
+    ``scale`` freezes the notebook pipeline policy (NB06 scales every
+    classifier; NB07 scales only SVR); ``fixed`` holds operational params;
+    ``random_state`` is injected at runtime from the global seed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    scale: bool = Field(description="Wrap the estimator in StandardScaler.")
+    fixed: dict[str, Any] = Field(default_factory=dict)
+    space: dict[str, SearchSpaceParamConfig] = Field(min_length=1)
+
+
+class ModelConfig(BaseModel):
+    """Thesis model registry (Fase 4 / T4.1): candidates + search spaces per task.
+
+    Replaces the Phase-0 RandomForest baseline: every task declares its
+    candidate algorithms (NB06: XGB/RF/LGBM/LDA; NB07: XGB/RF/HGB/SVR) and a
+    search space per candidate. The legacy baseline keys disappear in T4.3.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Legacy Phase-0 baseline (removed in T4.3 with baseline_rf.yaml).
+    name: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
+    # Thesis registry.
+    candidates: dict[Task, list[AlgorithmName]] = Field(default_factory=dict)
+    spaces: dict[Task, dict[AlgorithmName, CandidateConfig]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _candidates_have_spaces(self) -> Self:
+        """Every declared candidate needs a search space for its own task."""
+        for task, names in self.candidates.items():
+            if not names:
+                raise ValueError(f"candidates for task '{task}' must not be empty")
+            missing = [name for name in names if name not in self.spaces.get(task, {})]
+            if missing:
+                raise ValueError(
+                    f"candidates {missing} of task '{task}' have no search space declared"
+                )
+        return self
+
+    def candidate(self, task: Task, name: AlgorithmName) -> CandidateConfig:
+        """Return the registry entry for algorithm ``name`` under ``task``.
+
+        Raises:
+            ConfigError: The algorithm is not registered for that task.
+        """
+        try:
+            return self.spaces[task][name]
+        except KeyError as exc:
+            raise ConfigError(f"Model '{name}' is not registered for task '{task}'") from exc
 
 
 class TrainingConfig(BaseModel):
@@ -123,6 +213,7 @@ class TrainingConfig(BaseModel):
     cv_folds: int = Field(ge=2)
     shuffle_cv: bool
     n_trials: int = Field(ge=1)
+    scoring: ScoringName
 
     @model_validator(mode="after")
     def _no_stratify_on_regression(self) -> Self:

@@ -54,6 +54,47 @@ def test_regression_rejects_stratify_true() -> None:
 
 
 # ------------------------------------------------------------------------------
+# Fase 4 / T4.1: model registry schema (candidates + Optuna search spaces)
+# ------------------------------------------------------------------------------
+def test_registry_config_composes_and_validates() -> None:
+    cfg = load_config(["model=registry"])
+    assert cfg.model.candidates[Task.CLASSIFICATION] == ["xgb", "rf", "lgbm", "lda"]
+    assert cfg.model.candidates[Task.REGRESSION] == ["xgb", "rf", "hgb", "svr"]
+    xgb_space = cfg.model.spaces[Task.CLASSIFICATION]["xgb"].space
+    assert xgb_space["learning_rate"].log is True
+    assert cfg.model.spaces[Task.REGRESSION]["svr"].scale is True
+
+
+def test_registry_scoring_matches_task_protocol() -> None:
+    assert load_config(["training=classification"]).training.scoring == "mcc"
+    assert load_config(["training=regression"]).training.scoring == "r2"
+
+
+def test_registry_candidate_without_space_fails() -> None:
+    """A candidate must have a search space declared for its own task."""
+    with pytest.raises(ConfigError, match="search space"):
+        load_config(["model=registry", "model.candidates.classification=[svr]"])
+
+
+def test_registry_log_space_requires_positive_low() -> None:
+    with pytest.raises(ConfigError, match="log-scaled"):
+        load_config(
+            ["model=registry", "model.spaces.classification.xgb.space.learning_rate.low=-3"]
+        )
+
+
+def test_registry_categorical_requires_choices() -> None:
+    with pytest.raises(ConfigError, match="choices"):
+        load_config(["model=registry", "model.spaces.classification.lda.space.solver.choices=[]"])
+
+
+def test_candidate_helper_rejects_unregistered_pair() -> None:
+    cfg = load_config(["model=registry"])
+    with pytest.raises(ConfigError, match="not registered"):
+        cfg.model.candidate(Task.CLASSIFICATION, "svr")
+
+
+# ------------------------------------------------------------------------------
 # LRRK2 variant split (domain rule lives in config, validated as regex)
 # ------------------------------------------------------------------------------
 def test_lrrk2_variant_split_regexes_compile() -> None:
