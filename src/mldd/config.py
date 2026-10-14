@@ -222,13 +222,27 @@ class TrainingConfig(BaseModel):
 
 
 class PathsConfig(BaseModel):
-    """Directory layout, resolved against ``BASE_DIR`` at runtime."""
+    """Directory layout & dataset filename conventions (Fase 5 / T5.2).
+
+    The ``*_template`` values are the thesis artifact naming, resolved with
+    the target's ``dataset`` name (e.g. ``MAO-B``); they live in
+    ``configs/config.yaml`` and are validated to always interpolate
+    ``{dataset}``.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     data_dir: str = "data"
     models_dir: str = "models"
     reports_dir: str = "reports/figures"
+    raw_template: str = Field(default="raw/{dataset}_bioactivity_data.csv", pattern=r"\{dataset\}")
+    curated_template: str = Field(
+        default="processed/{dataset}_bioactivity_data_curated.csv", pattern=r"\{dataset\}"
+    )
+    matrix_template: str = Field(
+        default="processed/{dataset}_bioactivity_data_Pubchem-fp_wo_filtered.csv",
+        pattern=r"\{dataset\}",
+    )
 
 
 class TrackingConfig(BaseModel):
@@ -271,6 +285,21 @@ class AppConfig(BaseModel):
     @property
     def reports_path(self) -> Path:
         return (BASE_DIR / self.paths.reports_dir).resolve()
+
+    @property
+    def raw_path(self) -> Path:
+        """Raw ChEMBL CSV for the configured target (ingest output)."""
+        return self.data_path / self.paths.raw_template.format(dataset=self.target.dataset)
+
+    @property
+    def curated_path(self) -> Path:
+        """Curated CSV for the configured target (ingest output)."""
+        return self.data_path / self.paths.curated_template.format(dataset=self.target.dataset)
+
+    @property
+    def matrix_path(self) -> Path:
+        """Final model matrix for the configured target (featurize output)."""
+        return self.data_path / self.paths.matrix_template.format(dataset=self.target.dataset)
 
 
 # ------------------------------------------------------------------------------

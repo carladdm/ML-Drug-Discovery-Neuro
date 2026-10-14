@@ -18,6 +18,10 @@ paths: # resolved against the repo root (BASE_DIR) at runtime
   data_dir: data
   models_dir: models
   reports_dir: reports/figures
+  # Dataset filename conventions (thesis artifact naming); {dataset} = target.dataset
+  raw_template: "raw/{dataset}_bioactivity_data.csv"
+  curated_template: "processed/{dataset}_bioactivity_data_curated.csv"
+  matrix_template: "processed/{dataset}_bioactivity_data_Pubchem-fp_wo_filtered.csv"
 
 tracking: # MLflow (local SQLite store; server-ready by overriding the URI, Fase 5 / T5.1)
   tracking_uri: sqlite:///mlflow.db
