@@ -23,5 +23,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-# T5.4 (Fase 5) migrará este entrypoint a `mldd train`.
-CMD ["mldd", "version"]
+# El entrenamiento necesita la matriz de datos; data/ y models/ se montan en
+# tiempo de ejecucion (volumen) porque .dockerignore los excluye de la imagen.
+CMD ["mldd", "train", "target=maob", "task=regression"]

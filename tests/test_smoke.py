@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 import mldd
 from mldd.cli import app
-from mldd.config import BASE_DIR, DATA_DIR, MODELS_DIR, load_config
+from mldd.config import BASE_DIR, DATA_DIR, MODELS_DIR, _find_base_dir, load_config
 from mldd.exceptions import MLDDException
 from mldd.logging_utils import get_logger
 
@@ -19,6 +19,16 @@ def test_version_exposed() -> None:
 
 def test_base_dir_points_to_repo_root() -> None:
     assert (BASE_DIR / "pyproject.toml").is_file()
+
+
+def test_base_dir_discovers_config_root_from_cwd(tmp_path: Path) -> None:
+    """B16: a non-editable install finds configs/ by walking up from a start dir."""
+    fake_root = tmp_path / "project"
+    (fake_root / "configs").mkdir(parents=True)
+    (fake_root / "configs" / "config.yaml").write_text("defaults: []\n", encoding="utf-8")
+    nested = fake_root / "deep" / "nested"
+    nested.mkdir(parents=True)
+    assert _find_base_dir(starts=(nested,)) == fake_root
 
 
 def test_data_dirs_are_paths_under_base() -> None:

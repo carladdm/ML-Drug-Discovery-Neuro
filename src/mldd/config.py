@@ -29,10 +29,31 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from mldd.constants import Task
 from mldd.exceptions import ConfigError
 
+
 # ------------------------------------------------------------------------------
 # Repo-relative paths (structural layout, not tunable parameters)
 # ------------------------------------------------------------------------------
-BASE_DIR: Final = Path(__file__).resolve().parent.parent.parent
+def _find_base_dir(starts: tuple[Path, ...] | None = None) -> Path:
+    """Locate the project root that holds ``configs/`` (debt B16).
+
+    Editable installs and CI resolve next to the source tree, but a regular
+    wheel install (Docker) imports from ``site-packages``; the root is
+    therefore discovered by walking up from the package location first and
+    then from the current working directory. Falls back to the source-tree
+    guess so :func:`load_config` can raise its usual ``ConfigError``.
+
+    Args:
+        starts: Directory origins to walk up from; defaults to the package
+            location and the CWD (overridable in tests).
+    """
+    for start in starts or (Path(__file__).resolve().parent, Path.cwd()):
+        for directory in (start, *start.parents):
+            if (directory / "configs" / "config.yaml").is_file():
+                return directory
+    return Path(__file__).resolve().parent.parent.parent
+
+
+BASE_DIR: Final = _find_base_dir()
 CONFIG_DIR: Final = BASE_DIR / "configs"
 DATA_DIR: Final = BASE_DIR / "data"
 RAW_DATA_DIR: Final = DATA_DIR / "raw"
