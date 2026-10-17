@@ -55,3 +55,12 @@ jobs:
 
       - name: Smoke — CLI surface
         run: docker run --rm mldd:ci mldd --help
+
+      # Proves the image ships a working Java runtime + the bundled PaDEL jar.
+      - name: Smoke — PaDEL featurization (Java inside the image)
+        run: >-
+          docker run --rm mldd:ci python -c
+          "import pandas as pd; from mldd.config import load_config;
+          from mldd.io import compute_pubchem_fingerprints;
+          fp = compute_pubchem_fingerprints(pd.Series(['CCO']), pd.Series(['cmpd1']), load_config([]).features);
+          print('PaDEL OK', fp.shape)"

@@ -3,10 +3,12 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Instalar dependencias del sistema operativo (Compiladores C++, OpenJDK 17 para PaDEL y librerías C++ de RDKit)
+# Instalar dependencias del sistema operativo (Compiladores C++, OpenJDK para PaDEL y librerías C++ de RDKit).
+# Nota: python:3.12-slim ya es Debian Trixie, sin openjdk-17 (lo sustituye la 21);
+# el jar de PaDEL está verificado con Java moderno por el test `padel` de CI.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    openjdk-17-jre-headless \
+    openjdk-21-jre-headless \
     libxrender1 \
     libxext6 \
     git \
