@@ -233,7 +233,8 @@ def plot_shap_summary(
 
     The SHAP model is the final estimator; the pipeline's preprocessing
     steps (e.g. StandardScaler) are applied manually so SHAP sees the
-    exact feature space the estimator was fitted on.
+    exact feature space the estimator was fitted on. ``X`` is the sample
+    to explain — the caller bounds it via ``reporting.shap_max_samples``.
     """
     import shap  # heavy import: only pay for it when XAI runs
 
@@ -286,10 +287,13 @@ def _xai_figures(cfg: AppConfig, bundle: TrainedModel, X_eval: pd.DataFrame) -> 
         logger.warning("Estimator exposes no importances; skipping top-features figure.")
 
     try:
+        # Bound the explainer cost: reporting.shap_max_samples caps the rows
+        # (seeded sample, so figures are reproducible across runs).
+        shap_rows = min(cfg.reporting.shap_max_samples, len(X_eval))
         written.append(
             plot_shap_summary(
                 bundle,
-                X_eval,
+                X_eval.sample(n=shap_rows, random_state=cfg.seed),
                 cfg.reports_path / f"{stem}_{_SHAP_SUMMARY}.png",
                 max_display=cfg.reporting.top_features,
             )

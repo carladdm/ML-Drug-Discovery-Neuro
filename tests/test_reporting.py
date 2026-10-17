@@ -4,22 +4,32 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import joblib
 import mlflow
 import numpy as np
 import pandas as pd
 import pytest
+import shap
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.pipeline import Pipeline
 
-from mldd.config import AlgorithmName, AppConfig, PathsConfig, TrackingConfig, load_config
+from mldd.config import (
+    AlgorithmName,
+    AppConfig,
+    PathsConfig,
+    ReportConfig,
+    TrackingConfig,
+    load_config,
+)
 from mldd.constants import Task
 from mldd.exceptions import ReportError
 from mldd.modeling.predict import TrainedModel
 from mldd.reporting import (
     _best_cv_scores,
+    _xai_figures,
     plot_classification_eval,
     plot_regression_scatter,
     plot_shap_summary,
@@ -155,6 +165,43 @@ def test_plot_shap_summary_tree_model_writes_figure(tmp_path: Path) -> None:
     X = _matrix(Task.REGRESSION)[_FEATURES].head(20)
     path = plot_shap_summary(bundle, X, tmp_path / "shap.png", max_display=5)
     assert path.is_file() and path.stat().st_size > 0
+
+
+def test_xai_figures_caps_shap_rows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Regression: reporting.shap_max_samples must bound TreeExplainer's input.
+
+    The cap existed in ReportConfig but was never applied, so `mldd report`
+    computed SHAP values over the entire holdout (minutes-to-hours on real
+    matrices) instead of the configured sample.
+    """
+    cfg = _fast_cfg(Task.REGRESSION, tmp_path).model_copy(
+        update={"reporting": ReportConfig(shap_max_samples=7, top_features=5)}
+    )
+    cfg.reports_path.mkdir(parents=True, exist_ok=True)  # run_report does this
+    bundle = _bundle(Task.REGRESSION, forest=True)
+    X = _matrix(Task.REGRESSION, n_rows=20)[_FEATURES]
+
+    observed: dict[str, int] = {}
+
+    class _FakeTreeExplainer:
+        def __init__(self, estimator: Any) -> None:
+            self.estimator = estimator
+
+        def shap_values(self, features: Any) -> np.ndarray:
+            rows, cols = np.asarray(features).shape
+            observed["rows"] = rows
+            return np.zeros((rows, cols))
+
+    def _fake_summary_plot(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(shap, "TreeExplainer", _FakeTreeExplainer)
+    monkeypatch.setattr(shap, "summary_plot", _fake_summary_plot)
+
+    written = _xai_figures(cfg, bundle, X)
+
+    assert observed["rows"] == 7  # capped, not the 20 rows of X
+    assert len(written) == 2  # top-features + shap summary
 
 
 # ------------------------------------------------------------------------------
