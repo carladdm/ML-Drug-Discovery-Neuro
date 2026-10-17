@@ -14,7 +14,7 @@ from typing import Any, Final
 
 import typer
 
-from mldd import __version__, dataset, features, io, predictor, trainer
+from mldd import __version__, dataset, features, io, predictor, reporting, trainer
 from mldd.config import AppConfig, load_config
 from mldd.constants import BIOACTIVITY_CLASS, MOLECULE_ID, PCHEMBL_VALUE, SMILES
 from mldd.logging_utils import configure_logging
@@ -161,6 +161,19 @@ def predict(
     cfg = _compose_config(overrides)
     table = predictor.run_prediction(cfg, model, input_csv, output)
     typer.echo(f"Predicted {len(table)} candidates -> {output}")
+
+
+@app.command()
+def report(overrides: list[str] = _OVERRIDES_ARGUMENT) -> None:
+    """Generate evaluation + XAI figures: ``mldd report target=maob task=regression``."""
+    configure_logging()
+    cfg = _compose_config(overrides)
+    figures = reporting.run_report(cfg)
+    for figure in figures:
+        typer.echo(f"figure={figure}")
+    typer.echo(
+        f"Generated {len(figures)} figure(s) for {cfg.target.dataset} [{cfg.training.task.value}]."
+    )
 
 
 if __name__ == "__main__":

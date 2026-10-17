@@ -282,6 +282,20 @@ class TrackingConfig(BaseModel):
     experiment_name: str = "mldd-bioactivity"
 
 
+class ReportConfig(BaseModel):
+    """Figure generation knobs for `mldd report` (Fase 7 / T7).
+
+    The values live in ``configs/config.yaml`` (``reporting:`` section);
+    they bound runtime cost (SHAP is computed on a capped sample) and set
+    chart sizes — never scientific thresholds.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    shap_max_samples: int = Field(default=100, ge=1)
+    top_features: int = Field(default=10, ge=1)
+
+
 class AppConfig(BaseModel):
     """Root configuration produced by :func:`load_config`."""
 
@@ -295,6 +309,7 @@ class AppConfig(BaseModel):
     model: ModelConfig
     paths: PathsConfig = Field(default_factory=PathsConfig)
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
+    reporting: ReportConfig = Field(default_factory=ReportConfig)
 
     # --- resolved paths ------------------------------------------------------
     @property

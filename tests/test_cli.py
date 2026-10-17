@@ -30,7 +30,7 @@ _runner = CliRunner()
 def test_cli_exposes_pipeline_commands() -> None:
     result = _runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for command in ("ingest", "featurize", "train", "predict", "version"):
+    for command in ("ingest", "featurize", "train", "predict", "report", "version"):
         assert command in result.stdout
 
 
@@ -198,3 +198,20 @@ def test_predict_command_delegates_to_boundary(
     assert (seen_model, seen_input, seen_output) == (model, candidates, output)
     assert cfg.target.dataset == "MAO-B"
     assert "Predicted 1 candidates" in result.stdout
+
+
+def test_report_command_delegates_to_reporting(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    figures = [tmp_path / "eval.png", tmp_path / "xai.png"]
+    seen: list[AppConfig] = []
+
+    def _fake_run_report(cfg: AppConfig) -> list[Path]:
+        seen.append(cfg)
+        return figures
+
+    monkeypatch.setattr("mldd.reporting.run_report", _fake_run_report)
+
+    result = _runner.invoke(app, ["report", "target=maob", "task=regression"])
+    assert result.exit_code == 0, result.output
+    assert seen[0].target.dataset == "MAO-B"
+    assert "Generated 2 figure(s)" in result.stdout
+    assert str(figures[0]) in result.stdout

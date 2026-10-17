@@ -128,7 +128,7 @@ ML-Drug-Discovery-Neuro/
 │
 └── src/mldd/                 # Production-ready Python Package (src-layout)
     ├── __init__.py
-    ├── cli.py                # Typer CLI entry point (`mldd ingest/featurize/train/predict`)
+    ├── cli.py                # Typer CLI entry point (`mldd ingest/featurize/train/predict/report`)
     ├── config.py             # Hydra composition + Pydantic v2 schemas (`load_config`)
     ├── constants.py          # Task enum & dataframe column contracts
     ├── exceptions.py         # Domain-specific exception hierarchy
@@ -138,6 +138,7 @@ ML-Drug-Discovery-Neuro/
     ├── features.py           # Pure features: RDKit standardization, Lipinski, Z-score & variance filters
     ├── trainer.py            # MLflow-tracked training boundary (matrix load + persistence)
     ├── predictor.py          # Batch inference boundary (bundle load + PaDEL + predictions CSV)
+    ├── reporting.py          # Report boundary: evaluation + comparison + XAI figures
     └── modeling/
         ├── __init__.py
         ├── models.py         # Estimator registry factory + pipeline scale policy
@@ -218,6 +219,8 @@ make setup
 make ingest ARGS="target=maob"                 # ChEMBL fetch + NB02 curation
 make featurize ARGS="target=maob"              # PaDEL PubChem FP + filters
 make train ARGS="target=maob task=regression"  # Optuna registry + MLflow tracking
+make predict ARGS="-m models/<bundle>.joblib -i candidates.csv -o predictions.csv"
+make report ARGS="target=maob task=regression" # Eval + XAI figures (reports/figures)
 ```
 ### Option B: Docker Container Execution
 

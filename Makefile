@@ -60,8 +60,8 @@ train: ## Tune the registry + train (MLflow): make train ARGS="target=maob task=
 predict: ## Batch inference: make predict ARGS="-m models/m.joblib -i cands.csv -o preds.csv"
 	$(VENV_PY) -m mldd.cli predict $(ARGS)
 
-report: ## Regenerate figures/reports (Fase 7)
-	$(VENV_PY) -m mldd.cli report
+report: ## Generate evaluation + XAI figures: make report ARGS="target=maob task=regression"
+	$(VENV_PY) -m mldd.cli report $(ARGS)
 
 docker-build: ## Build the production image
 	docker build -t ml-drug-discovery-neuro:latest .

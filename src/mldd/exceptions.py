@@ -41,3 +41,7 @@ class ModelNotFoundError(MLDDException):
 
 class PredictionError(MLDDException):
     """Inference failed (invalid candidates file or model bundle)."""
+
+
+class ReportError(MLDDException):
+    """Report generation failed (missing artifacts, unsupported model)."""

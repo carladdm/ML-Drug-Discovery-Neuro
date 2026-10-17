@@ -26,3 +26,7 @@ paths: # resolved against the repo root (BASE_DIR) at runtime
 tracking: # MLflow (local SQLite store; server-ready by overriding the URI, Fase 5 / T5.1)
   tracking_uri: sqlite:///mlflow.db
   experiment_name: mldd-bioactivity
+
+reporting: # `mldd report` figures (Fase 7): runtime caps and chart sizes
+  shap_max_samples: 100 # rows sampled for the SHAP summary
+  top_features: 10 # bar-chart size for the feature-importance figure

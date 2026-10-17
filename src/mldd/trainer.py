@@ -199,11 +199,13 @@ def run_training(cfg: AppConfig, data_path: Path) -> TrainingRun:
         }
 
     cfg.models_path.mkdir(parents=True, exist_ok=True)
-    model_path = cfg.models_path / f"{cfg.target.name}_{cfg.training.task.value}_{algorithm}.joblib"
+    model_path = (
+        cfg.models_path / f"{cfg.target.dataset}_{cfg.training.task.value}_{algorithm}.joblib"
+    )
     bundle = TrainedModel(
         pipeline=pipeline,
         feature_columns=list(X.columns),
-        target=cfg.target.name,
+        target=cfg.target.dataset,
         task=cfg.training.task,
         algorithm=algorithm,
     )
@@ -223,7 +225,7 @@ def run_training(cfg: AppConfig, data_path: Path) -> TrainingRun:
         model_path=model_path,
     )
     return TrainingRun(
-        target=cfg.target.name,
+        target=cfg.target.dataset,
         task=cfg.training.task,
         algorithm=algorithm,
         best_params=best_params,
