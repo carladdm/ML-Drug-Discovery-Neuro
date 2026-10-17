@@ -1,0 +1,57 @@
+name: Docker
+
+# Build + smoke-run the production image whenever image-relevant files change
+# (the Fase 8 DoD requires a verified `docker build` + `docker run`; this
+# machine has no local Docker, so CI is the verification environment).
+
+on:
+  push:
+    branches: [main, "refactor/**"]
+    paths:
+      - dockerfile
+      - ".dockerignore"
+      - pyproject.toml
+      - README.md
+      - LICENSE
+      - configs/**
+      - src/**
+      - .github/workflows/docker-ci.yml
+  pull_request:
+    branches: [main, "refactor/**"]
+    paths:
+      - dockerfile
+      - ".dockerignore"
+      - pyproject.toml
+      - README.md
+      - LICENSE
+      - configs/**
+      - src/**
+      - .github/workflows/docker-ci.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-run:
+    name: Build image · smoke run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The repo tracks the Dockerfile as lowercase `dockerfile`.
+      - name: Build the production image
+        run: docker build -f dockerfile -t mldd:ci .
+
+      - name: Smoke — mldd version (install + entrypoint)
+        run: docker run --rm mldd:ci mldd version
+
+      - name: Smoke — config discovery inside the image
+        run: >-
+          docker run --rm mldd:ci python -c
+          "from mldd.config import load_config; print(load_config([]).training.task.value)"
+
+      - name: Smoke — CLI surface
+        run: docker run --rm mldd:ci mldd --help
