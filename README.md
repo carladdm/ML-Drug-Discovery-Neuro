@@ -2,6 +2,9 @@
 
 Predicting molecular bioactivity against four key neurodegenerative proteins using a dual classification and regression machine learning pipeline. Built entirely from raw ChEMBL data and structured under KDD process, leverages RDKit and PaDEL-Descriptor for molecular featurization, with explainable AI (XAI) to extract interpretable pharmacophore rules.
 
+[![CI](https://github.com/carladdm/ML-Drug-Discovery-Neuro/actions/workflows/ci.yml/badge.svg)](https://github.com/carladdm/ML-Drug-Discovery-Neuro/actions/workflows/ci.yml)
+[![Docker CI](https://github.com/carladdm/ML-Drug-Discovery-Neuro/actions/workflows/docker-ci.yml/badge.svg)](https://github.com/carladdm/ML-Drug-Discovery-Neuro/actions/workflows/docker-ci.yml)
+
 ![ChEMBL](https://img.shields.io/badge/Data-ChEMBL_v36-E63946?style=flat)
 ![RDKit](https://img.shields.io/badge/RDKit-2025.09.6-emerald)
 ![padelpy](https://img.shields.io/badge/padelpy-0.1.16-blue)

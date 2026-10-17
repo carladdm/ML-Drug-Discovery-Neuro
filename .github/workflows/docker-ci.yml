@@ -1,4 +1,4 @@
-name: Docker
+name: Docker CI
 
 # Build + smoke-run the production image whenever image-relevant files change
 # (the Fase 8 DoD requires a verified `docker build` + `docker run`; this
