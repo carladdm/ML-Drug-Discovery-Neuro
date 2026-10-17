@@ -89,13 +89,15 @@ def test_ingest_command_saves_raw_and_curated(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_ingest_lrrk2_writes_variant_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
-    curated_df = pd.DataFrame(
+    raw_df = pd.DataFrame(
         {
+            "molecule_chembl_id": ["MOL1", "MOL2"],
             "assay_description": [
                 "LRRK2 G2019S mutant inhibition assay",
                 "LRRK2 wild type inhibition assay",
             ],
             SMILES: ["CCO", "CCN"],
+            "pchembl_value": [7.0, 5.5],
         }
     )
     saved: list[Path] = []
@@ -104,16 +106,24 @@ def test_ingest_lrrk2_writes_variant_datasets(monkeypatch: pytest.MonkeyPatch) -
         saved.append(path)
         return path
 
-    monkeypatch.setattr("mldd.io.fetch_raw_activities", lambda target, data: curated_df.copy())
-    monkeypatch.setattr("mldd.dataset.curate_bioactivity", lambda df, data: df.copy())
+    def _fake_curate(df: pd.DataFrame, data: object) -> pd.DataFrame:
+        # mirror reality: curation drops assay_description
+        return df.drop(columns=["assay_description"]).copy()
+
+    monkeypatch.setattr("mldd.io.fetch_raw_activities", lambda target, data: raw_df.copy())
+    monkeypatch.setattr("mldd.dataset.curate_bioactivity", _fake_curate)
     monkeypatch.setattr("mldd.io.save_raw_csv", _fake_save)
 
     result = _runner.invoke(app, ["ingest", "target=lrrk2"])
     assert result.exit_code == 0, result.output
 
-    variant_names = [path.name for path in saved[2:]]
-    assert variant_names == [
+    # NB01 order: parent raw + curated, then per-variant raw + curated pairs
+    assert [path.name for path in saved] == [
+        "LRRK2_bioactivity_raw_data.csv",
+        "LRRK2_bioactivity_data_curated.csv",
+        "LRRK2_WT_bioactivity_raw_data.csv",
         "LRRK2_WT_bioactivity_data_curated.csv",
+        "LRRK2_G2019S_bioactivity_raw_data.csv",
         "LRRK2_G2019S_bioactivity_data_curated.csv",
     ]
 
