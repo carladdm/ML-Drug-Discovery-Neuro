@@ -200,7 +200,9 @@ def test_predict_command_delegates_to_boundary(
     assert "Predicted 1 candidates" in result.stdout
 
 
-def test_report_command_delegates_to_reporting(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_report_command_delegates_to_reporting(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     figures = [tmp_path / "eval.png", tmp_path / "xai.png"]
     seen: list[AppConfig] = []
 

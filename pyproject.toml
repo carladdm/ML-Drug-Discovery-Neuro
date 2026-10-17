@@ -66,7 +66,7 @@ dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "hypothesis>=6.100",
-    "ruff>=0.9.0",
+    "ruff==0.17.1", # pinned: CI installs latest, formatter output must match local/pre-commit
     "mypy>=1.13.0",
     "pandas-stubs>=2.2.0",
     "pre-commit>=4.0",
