@@ -9,17 +9,26 @@ user-facing output channel of the CLI (never ``print()`` in library code).
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Final
 
 import typer
 
-from mldd import __version__, dataset, features, io, trainer
+from mldd import __version__, dataset, features, io, predictor, trainer
 from mldd.config import AppConfig, load_config
 from mldd.constants import BIOACTIVITY_CLASS, MOLECULE_ID, PCHEMBL_VALUE, SMILES
 from mldd.logging_utils import configure_logging
 
 #: Variadic Hydra overrides; module-level singleton keeps flake8-bugbear (B008) happy.
 _OVERRIDES_ARGUMENT: Any = typer.Argument(None)
+#: Required options of ``mldd predict`` (module-level singletons for B008).
+_PREDICT_MODEL_OPTION: Any = typer.Option(
+    ..., "--model", "-m", help="TrainedModel bundle (.joblib) written by `mldd train`."
+)
+_PREDICT_INPUT_OPTION: Any = typer.Option(
+    ..., "--input", "-i", help="Candidates CSV (canonical_smiles column required)."
+)
+_PREDICT_OUTPUT_OPTION: Any = typer.Option(..., "--output", "-o", help="Destination CSV.")
 #: Documented CLI shorthand (AGENTS.md): ``task=regression`` == ``training=regression``.
 _TASK_PREFIX: Final = "task="
 
@@ -117,6 +126,20 @@ def train(overrides: list[str] = _OVERRIDES_ARGUMENT) -> None:
     metrics = " ".join(f"{name}={value:.4f}" for name, value in sorted(run.metrics.items()))
     typer.echo(f"{run.target} [{run.task.value}] winner={run.algorithm} {metrics}")
     typer.echo(f"model={run.model_path} mlflow_run={run.mlflow_run_id}")
+
+
+@app.command()
+def predict(
+    model: Path = _PREDICT_MODEL_OPTION,
+    input_csv: Path = _PREDICT_INPUT_OPTION,
+    output: Path = _PREDICT_OUTPUT_OPTION,
+    overrides: list[str] = _OVERRIDES_ARGUMENT,
+) -> None:
+    """Batch inference on new SMILES: ``mldd predict -m models/....joblib -i candidates.csv -o predictions.csv``."""
+    configure_logging()
+    cfg = _compose_config(overrides)
+    table = predictor.run_prediction(cfg, model, input_csv, output)
+    typer.echo(f"Predicted {len(table)} candidates -> {output}")
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ _runner = CliRunner()
 def test_cli_exposes_pipeline_commands() -> None:
     result = _runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for command in ("ingest", "featurize", "train", "version"):
+    for command in ("ingest", "featurize", "train", "predict", "version"):
         assert command in result.stdout
 
 
@@ -150,3 +150,30 @@ def test_featurize_command_builds_model_matrix(monkeypatch: pytest.MonkeyPatch) 
     assert len(matrix) == 6
     assert BIOACTIVITY_CLASS in matrix.columns
     assert any(column.startswith("PubchemFP") for column in matrix.columns)
+
+
+def test_predict_command_delegates_to_boundary(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[tuple[AppConfig, Path, Path, Path]] = []
+
+    def _fake_run_prediction(
+        cfg: AppConfig, model_path: Path, input_csv: Path, output_csv: Path
+    ) -> pd.DataFrame:
+        calls.append((cfg, model_path, input_csv, output_csv))
+        return pd.DataFrame({"predicted_class": [1]})
+
+    monkeypatch.setattr("mldd.predictor.run_prediction", _fake_run_prediction)
+    model = tmp_path / "model.joblib"
+    candidates = tmp_path / "candidates.csv"
+    output = tmp_path / "predictions.csv"
+
+    result = _runner.invoke(
+        app,
+        ["predict", "-m", str(model), "-i", str(candidates), "-o", str(output), "target=maob"],
+    )
+    assert result.exit_code == 0, result.output
+    cfg, seen_model, seen_input, seen_output = calls[0]
+    assert (seen_model, seen_input, seen_output) == (model, candidates, output)
+    assert cfg.target.dataset == "MAO-B"
+    assert "Predicted 1 candidates" in result.stdout

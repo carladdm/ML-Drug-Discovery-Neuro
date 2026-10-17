@@ -37,3 +37,7 @@ class TrainingError(MLDDException):
 
 class ModelNotFoundError(MLDDException):
     """The requested model artifact does not exist on disk or in the registry."""
+
+
+class PredictionError(MLDDException):
+    """Inference failed (invalid candidates file or model bundle)."""

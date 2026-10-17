@@ -2,8 +2,9 @@
 
 Loads the processed model matrix produced by the featurization stage, runs
 the registry-driven workflows in :mod:`mldd.modeling.train` and persists
-both artifacts of a run: the fitted pipeline (joblib under ``models/``) and
-the MLflow record (params, metrics, tags, model artifact) under the
+both artifacts of a run: the trained :class:`~mldd.modeling.predict.TrainedModel`
+bundle (pipeline + feature schema, joblib under ``models/``) and the
+MLflow record (params, metrics, tags, model artifact) under the
 tracking configuration of ``configs/config.yaml``.
 """
 
@@ -29,6 +30,7 @@ from mldd.constants import (
 )
 from mldd.exceptions import TrainingError
 from mldd.logging_utils import get_logger
+from mldd.modeling.predict import TrainedModel
 from mldd.modeling.train import fit_classification_model, fit_regression_model
 
 logger: logging.Logger = get_logger(__name__)
@@ -198,8 +200,19 @@ def run_training(cfg: AppConfig, data_path: Path) -> TrainingRun:
 
     cfg.models_path.mkdir(parents=True, exist_ok=True)
     model_path = cfg.models_path / f"{cfg.target.name}_{cfg.training.task.value}_{algorithm}.joblib"
-    joblib.dump(pipeline, model_path)
-    logger.info("Fitted pipeline persisted to %s.", model_path)
+    bundle = TrainedModel(
+        pipeline=pipeline,
+        feature_columns=list(X.columns),
+        target=cfg.target.name,
+        task=cfg.training.task,
+        algorithm=algorithm,
+    )
+    joblib.dump(bundle, model_path)
+    logger.info(
+        "TrainedModel bundle persisted to %s (%d features).",
+        model_path,
+        len(bundle.feature_columns),
+    )
 
     run_id = _track(
         cfg,

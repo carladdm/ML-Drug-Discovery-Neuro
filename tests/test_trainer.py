@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,6 +13,7 @@ from mlflow.tracking import MlflowClient
 from mldd.config import AppConfig, PathsConfig, TrackingConfig, load_config
 from mldd.constants import Task
 from mldd.exceptions import TrainingError
+from mldd.modeling.predict import TrainedModel
 from mldd.trainer import load_model_matrix, run_training, split_features_and_target
 
 
@@ -82,6 +84,9 @@ def test_run_training_classification_end_to_end(tmp_path: Path) -> None:
 
     assert run.algorithm in ("xgb", "rf", "lgbm", "lda")
     assert run.model_path.is_file()
+    bundle = joblib.load(run.model_path)
+    assert isinstance(bundle, TrainedModel) and len(bundle.feature_columns) == 10
+    assert bundle.task is Task.CLASSIFICATION
     assert {"cv_score", "holdout_mcc", "holdout_roc_auc", "holdout_accuracy"} <= set(run.metrics)
     client = MlflowClient(tracking_uri=f"sqlite:///{tmp_path / 'mlflow.db'}")
     logged = client.get_run(run.mlflow_run_id)
@@ -98,6 +103,9 @@ def test_run_training_regression_end_to_end(tmp_path: Path) -> None:
 
     assert run.algorithm in ("xgb", "rf", "hgb", "svr")
     assert run.model_path.is_file()
+    bundle = joblib.load(run.model_path)
+    assert isinstance(bundle, TrainedModel) and len(bundle.feature_columns) == 10
+    assert bundle.task is Task.REGRESSION
     assert {"cv_score", "holdout_r2", "holdout_rmse"} <= set(run.metrics)
     client = MlflowClient(tracking_uri=f"sqlite:///{tmp_path / 'mlflow.db'}")
     logged = client.get_run(run.mlflow_run_id)
