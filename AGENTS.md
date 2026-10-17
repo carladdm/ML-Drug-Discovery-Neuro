@@ -15,7 +15,7 @@ Plataforma de MLOps para el descubrimiento de fármacos neurológicos. Migra la 
 *   **Linting y Formateo:** `make lint` (ejecuta `ruff check src tests scripts` y `ruff format --check ...`); `make format` autocorrige.
 *   **Typechecking:** `make typecheck` (neutraliza los stubs rotos de rdkit vía `scripts/ensure_rdkit_stubs_ok.py` y ejecuta `mypy` en modo strict sobre `src` y `tests`, configurado en `pyproject.toml`).
 *   **Testing:** `make test` (ejecuta `pytest -q`); `make cov` añade cobertura (`--cov=mldd`).
-*   **Ejecución CLI:** hoy solo `mldd version`; `mldd train target=maob task=regression` (Typer + Hydra) se habilita en Fase 5.
+*   **Ejecución CLI:** `mldd ingest|featurize|train|predict|report` (Typer + Hydra, overrides como argumentos variádicos; `task=` es shorthand documentado de `training=`). El operacional masivo vive en `scripts/parity_sweep.py` (reanudable). `mldd version` sirve de smoke.
 
 ## Convenciones
 *   **Código y Docstrings:** Todo en **Inglés**. Nombres descriptivos (`snake_case` para variables/funciones, `PascalCase` para clases).
