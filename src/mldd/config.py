@@ -256,7 +256,9 @@ class PathsConfig(BaseModel):
     data_dir: str = "data"
     models_dir: str = "models"
     reports_dir: str = "reports/figures"
-    raw_template: str = Field(default="raw/{dataset}_bioactivity_data.csv", pattern=r"\{dataset\}")
+    raw_template: str = Field(
+        default="raw/{dataset}_bioactivity_raw_data.csv", pattern=r"\{dataset\}"
+    )
     curated_template: str = Field(
         default="processed/{dataset}_bioactivity_data_curated.csv", pattern=r"\{dataset\}"
     )

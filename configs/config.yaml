@@ -19,7 +19,7 @@ paths: # resolved against the repo root (BASE_DIR) at runtime
   models_dir: models
   reports_dir: reports/figures
   # Dataset filename conventions (thesis artifact naming); {dataset} = target.dataset
-  raw_template: "raw/{dataset}_bioactivity_data.csv"
+  raw_template: "raw/{dataset}_bioactivity_raw_data.csv"
   curated_template: "processed/{dataset}_bioactivity_data_curated.csv"
   matrix_template: "processed/{dataset}_bioactivity_data_Pubchem-fp_wo_filtered.csv"
 

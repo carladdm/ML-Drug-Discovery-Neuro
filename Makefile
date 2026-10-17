@@ -57,8 +57,8 @@ featurize: ## Build the model matrix: make featurize ARGS="target=maob"
 train: ## Tune the registry + train (MLflow): make train ARGS="target=maob task=regression"
 	$(VENV_PY) -m mldd.cli train $(ARGS)
 
-predict: ## Run inference on new SMILES (Fase 6)
-	$(VENV_PY) -m mldd.cli predict
+predict: ## Batch inference: make predict ARGS="-m models/m.joblib -i cands.csv -o preds.csv"
+	$(VENV_PY) -m mldd.cli predict $(ARGS)
 
 report: ## Regenerate figures/reports (Fase 7)
 	$(VENV_PY) -m mldd.cli report

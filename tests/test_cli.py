@@ -84,7 +84,7 @@ def test_ingest_command_saves_raw_and_curated(monkeypatch: pytest.MonkeyPatch) -
 
     cfg = load_config(["target=maob"])
     assert saved == [cfg.raw_path, cfg.curated_path]
-    assert cfg.raw_path.name == "MAO-B_bioactivity_data.csv"
+    assert cfg.raw_path.name == "MAO-B_bioactivity_raw_data.csv"
     assert cfg.curated_path.name == "MAO-B_bioactivity_data_curated.csv"
 
 
@@ -116,6 +116,17 @@ def test_ingest_lrrk2_writes_variant_datasets(monkeypatch: pytest.MonkeyPatch) -
         "LRRK2_WT_bioactivity_data_curated.csv",
         "LRRK2_G2019S_bioactivity_data_curated.csv",
     ]
+
+
+def test_ingest_refuses_derived_variant_targets(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _no_fetch(target: object, data: object) -> pd.DataFrame:
+        raise AssertionError("network fetch must not run for derived targets")
+
+    monkeypatch.setattr("mldd.io.fetch_raw_activities", _no_fetch)
+    result = _runner.invoke(app, ["ingest", "target=lrrk2_wt"])
+    assert result.exit_code == 1
+    assert "derives from dataset 'LRRK2'" in result.output
+    assert "target=lrrk2" in result.output
 
 
 def test_featurize_command_builds_model_matrix(monkeypatch: pytest.MonkeyPatch) -> None:
